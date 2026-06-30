@@ -1,11 +1,47 @@
 <script setup>
-import { ref, onMounted } from "vue";
+import { ref, onMounted, computed } from "vue";
 import { api } from "../services/api";
 
 const ingredients = ref([]);
 const newName = ref("");
 const newUnit = ref("");
 
+const keyword = ref("");
+const stockFilter = ref("all");
+const sortBy = ref("name");
+
+const filteredIngredients = computed(() => {
+  let list = [...ingredients.value];
+
+  //搜尋
+  if (keyword.value) {
+    list = list.filter((item) =>
+      item.name.toLowerCase().includes(keyword.value.toLowerCase()),
+    );
+  }
+
+  //篩選
+  if (stockFilter.value === "low") {
+    list = list.filter((item) => item.stock < 10);
+  }
+
+  if (stockFilter.value === "normal") {
+    list = list.filter((item) => item.stock >= 10);
+  }
+
+  //排序
+  switch (sortBy.value) {
+    case "stock":
+      list.sort((a, b) => b.stock - a.stock);
+      break;
+
+    case "name":
+      list.sort((a, b) => a.name.localeCompare(b.name));
+      break;
+  }
+
+  return list;
+});
 const loadIngredients = async () => {
   try {
     const res = await api.get("/Ingredients");
@@ -85,6 +121,20 @@ onMounted(() => {
       <input v-model="newUnit" placeholder="Unit" />
       <button @click="addIngredient">➕ Add Ingredient</button>
     </div>
+    <div class="toolbar">
+      <input v-model="keyword" placeholder="🔍 Search Ingredient" />
+
+      <select v-model="stockFilter">
+        <option value="all">All stock</option>
+        <option value="low">Low stock</option>
+        <option value="normal">Normal stock</option>
+      </select>
+
+      <select v-model="sortBy">
+        <option value="name">Name</option>
+        <option value="stock">Stock</option>
+      </select>
+    </div>
     <table>
       <thead>
         <tr>
@@ -95,7 +145,7 @@ onMounted(() => {
         </tr>
       </thead>
       <tbody>
-        <tr v-for="item in ingredients" :key="item.id">
+        <tr v-for="item in filteredIngredients" :key="item.id">
           <td>{{ item.name }}</td>
           <td>{{ item.unit }}</td>
           <td>
@@ -113,4 +163,18 @@ onMounted(() => {
     </table>
   </div>
 </template>
-<style scoped></style>
+<style scoped>
+.toolbar {
+  display: flex;
+  gap: 12px;
+  margin: 20px 0;
+  flex-wrap: wrap;
+}
+
+.toolbar input,
+.toolbar select {
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+}
+</style>
