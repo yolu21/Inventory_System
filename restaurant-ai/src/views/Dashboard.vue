@@ -1,31 +1,11 @@
 <script setup>
 import { ref, onMounted } from "vue";
-import { api } from "../services/api";
+import { useDashboardStore } from "../stores/dashboard";
 
-const summary = ref({});
-const overview = ref(null);
-
-const loadsummary = async () => {
-  try {
-    const res = await api.get("/Dashboard/summary");
-    summary.value = res.data;
-  } catch (error) {
-    console.error(error);
-  }
-};
-
-const loadOverview = async () => {
-  try {
-    const res = await api.get("/Dashboard/overview");
-    overview.value = res.data;
-  } catch (error) {
-    console.error(error);
-  }
-};
+const dashboardStore = useDashboardStore();
 
 onMounted(async () => {
-  await loadsummary();
-  await loadOverview();
+  await dashboardStore.loadDashboard();
 });
 </script>
 <template>
@@ -35,19 +15,19 @@ onMounted(async () => {
     <div class="cards">
       <div class="card">
         <h3>食材總數</h3>
-        <p>{{ summary.totalIngredients }}</p>
+        <p>{{ dashboardStore.summary.totalIngredients }}</p>
       </div>
       <div class="card">
         <h3>總進貨量</h3>
-        <p>{{ summary.totalIn }}</p>
+        <p>{{ dashboardStore.summary.totalIn }}</p>
       </div>
       <div class="card">
         <h3>總出貨量</h3>
-        <p>{{ summary.totalOut }}</p>
+        <p>{{ dashboardStore.summary.totalOut }}</p>
       </div>
       <div class="card warning">
         <h3>低庫存食材</h3>
-        <p>{{ summary.lowStockIngredients }}</p>
+        <p>{{ dashboardStore.summary.lowStockIngredients }}</p>
       </div>
     </div>
     <hr />
@@ -55,7 +35,7 @@ onMounted(async () => {
     <!--各食材庫存) -->
     <h2>📦庫存概覽</h2>
 
-    <table v-if="overview">
+    <table v-if="dashboardStore.overview">
       <thead>
         <tr>
           <th>食材名稱</th>
@@ -65,7 +45,10 @@ onMounted(async () => {
         </tr>
       </thead>
       <tbody>
-        <tr v-for="item in overview?.ingredients || []" :key="item.id">
+        <tr
+          v-for="item in dashboardStore.overview?.ingredients || []"
+          :key="item.id"
+        >
           <td>{{ item.name }}</td>
           <td>{{ item.in }}</td>
           <td>{{ item.out }}</td>
@@ -80,7 +63,10 @@ onMounted(async () => {
     <!--低庫存食材-->
     <h2>⚠️ 低庫存食材</h2>
     <ul>
-      <li v-for="item in overview?.lowStock || []" :key="item.id">
+      <li
+        v-for="item in dashboardStore.overview?.lowStock || []"
+        :key="item.id"
+      >
         {{ item.name }} - 庫存: {{ item.stock }}
       </li>
     </ul>
@@ -90,7 +76,10 @@ onMounted(async () => {
 
     <h2>最多用量食材</h2>
     <ol>
-      <li v-for="item in overview?.topUsage || []" :key="item.id">
+      <li
+        v-for="item in dashboardStore.overview?.topUsage || []"
+        :key="item.id"
+      >
         {{ item.name }} - 用量: {{ item.out }}
       </li>
     </ol>

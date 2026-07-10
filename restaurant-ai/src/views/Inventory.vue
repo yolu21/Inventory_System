@@ -1,8 +1,8 @@
 <script setup>
 import { ref, onMounted, computed } from "vue";
-import { api } from "../services/api";
-
-const ingredients = ref([]);
+import { useInventoryStore } from "../stores/inventory";
+//const ingredients = ref([]);
+const inventoryStore = useInventoryStore();
 const newName = ref("");
 const newUnit = ref("");
 
@@ -11,7 +11,7 @@ const stockFilter = ref("all");
 const sortBy = ref("name");
 
 const filteredIngredients = computed(() => {
-  let list = [...ingredients.value];
+  let list = [...inventoryStore.inventory];
 
   //搜尋
   if (keyword.value) {
@@ -42,74 +42,31 @@ const filteredIngredients = computed(() => {
 
   return list;
 });
-const loadIngredients = async () => {
-  try {
-    const res = await api.get("/Ingredients");
-    ingredients.value = res.data;
-
-    for (const item of ingredients.value) {
-      await loadStock(item);
-    }
-  } catch (error) {
-    console.error(error);
-  }
-};
-
-const loadStock = async (item) => {
-  try {
-    const stockRes = await api.get(`/Stock/stock/${item.id}`);
-    item.stock = stockRes.data.stock;
-  } catch (error) {
-    console.error(error);
-  }
-};
-
 const addIngredient = async () => {
   if (!newName.value || !newUnit.value) return;
-  try {
-    await api.post("/Ingredients", {
-      name: newName.value,
-      unit: newUnit.value,
-    });
-    newName.value = "";
-    newUnit.value = "";
-    await loadIngredients();
-  } catch (error) {
-    console.error(error);
-  }
+
+  await inventoryStore.addIngredient({
+    name: newName.value,
+    unit: newUnit.value,
+  });
+
+  newName.value = "";
+  newUnit.value = "";
 };
 
 const deleteIngredient = async (item) => {
-  try {
-    await api.delete(`/Ingredients/${item.id}`);
-    await loadIngredients();
-  } catch (error) {
-    console.error(error);
-  }
+  await inventoryStore.deleteIngredient(item.id);
 };
+
 const addStock = async (item) => {
-  await api.post("/Stock", {
-    ingredientId: item.id,
-    type: "IN",
-    quantity: Number(item.amount) || 0,
-  });
-  if (item) {
-    await loadStock(item);
-  }
+  await inventoryStore.addStock(item);
 };
 
 const removeStock = async (item) => {
-  await api.post("/Stock", {
-    ingredientId: item.id,
-    type: "OUT",
-    quantity: Number(item.amount) || 0,
-  });
-  if (item) {
-    await loadStock(item);
-  }
+  await inventoryStore.removeStock(item);
 };
-onMounted(() => {
-  loadIngredients();
+onMounted(async () => {
+  await inventoryStore.loadIngredients();
 });
 </script>
 
