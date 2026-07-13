@@ -8,6 +8,7 @@
       <router-link to="/">首頁</router-link>
       <router-link to="/dashboard">庫存管理</router-link>
       <router-link to="/inventory">新增庫存</router-link>
+      <router-link to="/history">歷史記錄</router-link>
     </aside>
 
     <!--右側內容-->

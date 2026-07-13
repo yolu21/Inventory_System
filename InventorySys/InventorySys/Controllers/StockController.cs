@@ -53,7 +53,23 @@ namespace InventorySys.Controllers
         [HttpGet]
         public IActionResult GetRecords()
         {
-            return Ok(_context.StockRecords.ToList());
+            //LINQ Query Syntax 寫法
+            var data = 
+                from s in _context.StockRecords
+                join i in _context.Ingredients on s.IngredientId equals i.Id
+
+                orderby s.Date descending
+                select new
+                {
+                    s.id,
+                    s.IngredientId,
+                    IngredientName = i.Name,
+                    s.Quantity,
+                    s.Type,
+                    s.Date
+                };
+            return Ok(data.ToList());
+
         }
     }
 }

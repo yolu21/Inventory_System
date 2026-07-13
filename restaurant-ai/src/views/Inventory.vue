@@ -73,7 +73,7 @@ onMounted(async () => {
 <template>
   <div class="page">
     <h1>🍴 Restaurant Inventory System</h1>
-    <div class="add-section">
+    <div class="toolbar">
       <input v-model="newName" placeholder="Ingredient Name" />
       <input v-model="newUnit" placeholder="Unit" />
       <button @click="addIngredient">➕ Add Ingredient</button>
@@ -128,10 +128,11 @@ onMounted(async () => {
   flex-wrap: wrap;
 }
 
-.toolbar input,
-.toolbar select {
+input,
+select {
   padding: 8px 12px;
   border: 1px solid #ddd;
   border-radius: 6px;
+  margin-right: 8px;
 }
 </style>
