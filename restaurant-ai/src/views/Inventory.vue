@@ -1,6 +1,8 @@
 <script setup>
 import { ref, onMounted, computed } from "vue";
+import { api } from "../services/api";
 import { useInventoryStore } from "../stores/inventory";
+import * as XLSX from "xlsx";
 //const ingredients = ref([]);
 const inventoryStore = useInventoryStore();
 const newName = ref("");
@@ -9,6 +11,10 @@ const newUnit = ref("");
 const keyword = ref("");
 const stockFilter = ref("all");
 const sortBy = ref("name");
+
+const importData = ref([]); //匯入 Excel 資料
+const importErrors = ref([]); //匯入錯誤訊息
+const fileInput = ref(null); //檔案輸入框的引用
 
 const filteredIngredients = computed(() => {
   let list = [...inventoryStore.inventory];
@@ -42,6 +48,7 @@ const filteredIngredients = computed(() => {
 
   return list;
 });
+
 const addIngredient = async () => {
   if (!newName.value || !newUnit.value) return;
 
@@ -64,6 +71,97 @@ const addStock = async (item) => {
 
 const removeStock = async (item) => {
   await inventoryStore.removeStock(item);
+};
+
+//匯出 Excel
+const exportExcel = () => {
+  const data = inventoryStore.inventory.map((item) => ({
+    食材名稱: item.name,
+    單位: item.unit,
+    庫存: item.stock,
+  }));
+
+  const worksheet = XLSX.utils.json_to_sheet(data);
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, "Inventory");
+  XLSX.writeFile(workbook, "inventory.xlsx");
+};
+
+//匯入 Excel
+const importExcel = (event) => {
+  const file = event.target.files[0];
+
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const data = new Uint8Array(e.target.result);
+
+    const workbook = XLSX.read(data, { type: "array" });
+
+    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+
+    const json = XLSX.utils.sheet_to_json(sheet);
+    const errors = validateImportData(json);
+    importErrors.value = errors;
+
+    if (errors.length > 0) {
+      alert(`匯入失敗，請檢查以下錯誤:\n${errors.join("\n")}`);
+      clearImport();
+      return;
+    } else {
+      importData.value = json;
+      //alert("匯入成功，請點擊儲存以更新資料庫。");
+    }
+
+    console.log(json);
+  };
+
+  reader.readAsArrayBuffer(file);
+};
+
+//儲存 Excel
+const saveExcel = async () => {
+  if (importData.value.length === 0) return;
+
+  try {
+    await api.post("/Import", importData.value);
+    alert("匯入成功");
+  } catch (error) {
+    console.error("匯入失敗:", error);
+    alert("匯入失敗。");
+  }
+};
+
+//清除匯入資料
+const clearImport = () => {
+  importData.value = [];
+  if (fileInput.value) {
+    fileInput.value.value = null; //清除檔案輸入框的值
+  }
+};
+
+const validateImportData = (data) => {
+  const errors = [];
+  data.forEach((item, index) => {
+    const row = index + 1; // Excel 的列號從 1 開始，且第一列是標題，所以要加 2
+    if (!item["食材名稱"]) {
+      errors.push(`第 ${row} 列未填寫食材名稱`);
+    }
+
+    if (!item["單位"]) {
+      errors.push(`第 ${row} 列未填寫單位`);
+    }
+
+    if (item["庫存"] === undefined || item["庫存"] === "") {
+      errors.push(`第 ${row} 列 ${item["食材名稱"]} 未填寫進貨數量`);
+    } else if (isNaN(item["庫存"])) {
+      errors.push(`第 ${row} 列 ${item["食材名稱"]} 進貨數量必須為數字`);
+    } else if (item["庫存"] <= 0) {
+      errors.push(`第 ${row} 列 ${item["食材名稱"]}   進貨數量不能小於 0`);
+    }
+  });
+  return errors;
 };
 onMounted(async () => {
   await inventoryStore.loadIngredients();
@@ -91,6 +189,37 @@ onMounted(async () => {
         <option value="name">Name</option>
         <option value="stock">Stock</option>
       </select>
+    </div>
+    <div class="toolbar">
+      <input
+        ref="fileInput"
+        type="file"
+        accept=".xlsx, .xls"
+        @change="importExcel"
+      />
+      <button @click="saveExcel">Save</button>
+      <button @click="clearImport">Clear</button>
+      <button @click="exportExcel">📥 Download Excel</button>
+    </div>
+    <div v-if="importData.length > 0" class="preview">
+      <h2>📋 Excel 匯入預覽</h2>
+      <p>共 {{ importData.length }} 筆資料</p>
+      <table>
+        <thead>
+          <tr>
+            <th>食材名稱</th>
+            <th>單位</th>
+            <th>庫存</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="(item, index) in importData" :key="index">
+            <td>{{ item["食材名稱"] }}</td>
+            <td>{{ item["單位"] }}</td>
+            <td>{{ item["庫存"] }}</td>
+          </tr>
+        </tbody>
+      </table>
     </div>
     <table>
       <thead>
