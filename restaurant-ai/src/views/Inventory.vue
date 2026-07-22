@@ -101,7 +101,14 @@ const importExcel = (event) => {
 
     const sheet = workbook.Sheets[workbook.SheetNames[0]];
 
-    const json = XLSX.utils.sheet_to_json(sheet);
+    //const json = XLSX.utils.sheet_to_json(sheet);
+    const excelData = XLSX.utils.sheet_to_json(sheet);
+
+    const json = excelData.map((item) => ({
+      Name: item["食材名稱"],
+      Unit: item["單位"],
+      Stock: item["庫存"],
+    }));
     const errors = validateImportData(json);
     importErrors.value = errors;
 
@@ -111,7 +118,7 @@ const importExcel = (event) => {
       return;
     } else {
       importData.value = json;
-      //alert("匯入成功，請點擊儲存以更新資料庫。");
+      alert("匯入成功，請點擊儲存以更新資料庫。");
     }
 
     console.log(json);
@@ -122,11 +129,20 @@ const importExcel = (event) => {
 
 //儲存 Excel
 const saveExcel = async () => {
-  if (importData.value.length === 0) return;
-
+  if (importData.value.length === 0) {
+    alert("沒有匯入資料，請先匯入 Excel。");
+    return;
+  }
+  console.log(importData.value);
   try {
-    await api.post("/Import", importData.value);
-    alert("匯入成功");
+    const res = await api.post("/Import", importData.value, {
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+    alert(res.data.message);
+    await inventoryStore.loadIngredients(); //重新載入食材資料
+    clearImport(); //清除匯入資料
   } catch (error) {
     console.error("匯入失敗:", error);
     alert("匯入失敗。");
@@ -145,20 +161,20 @@ const validateImportData = (data) => {
   const errors = [];
   data.forEach((item, index) => {
     const row = index + 1; // Excel 的列號從 1 開始，且第一列是標題，所以要加 2
-    if (!item["食材名稱"]) {
+    if (!item["Name"]) {
       errors.push(`第 ${row} 列未填寫食材名稱`);
     }
 
-    if (!item["單位"]) {
+    if (!item["Unit"]) {
       errors.push(`第 ${row} 列未填寫單位`);
     }
 
-    if (item["庫存"] === undefined || item["庫存"] === "") {
-      errors.push(`第 ${row} 列 ${item["食材名稱"]} 未填寫進貨數量`);
-    } else if (isNaN(item["庫存"])) {
-      errors.push(`第 ${row} 列 ${item["食材名稱"]} 進貨數量必須為數字`);
-    } else if (item["庫存"] <= 0) {
-      errors.push(`第 ${row} 列 ${item["食材名稱"]}   進貨數量不能小於 0`);
+    if (item["Stock"] === undefined || item["Stock"] === "") {
+      errors.push(`第 ${row} 列 ${item["Name"]} 未填寫進貨數量`);
+    } else if (isNaN(item["Stock"])) {
+      errors.push(`第 ${row} 列 ${item["Name"]} 進貨數量必須為數字`);
+    } else if (item["Stock"] <= 0) {
+      errors.push(`第 ${row} 列 ${item["Name"]}   進貨數量不能小於 0`);
     }
   });
   return errors;
@@ -214,9 +230,9 @@ onMounted(async () => {
         </thead>
         <tbody>
           <tr v-for="(item, index) in importData" :key="index">
-            <td>{{ item["食材名稱"] }}</td>
-            <td>{{ item["單位"] }}</td>
-            <td>{{ item["庫存"] }}</td>
+            <td>{{ item["Name"] }}</td>
+            <td>{{ item["Unit"] }}</td>
+            <td>{{ item["Stock"] }}</td>
           </tr>
         </tbody>
       </table>
