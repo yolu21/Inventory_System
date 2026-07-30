@@ -140,12 +140,16 @@ const saveExcel = async () => {
         "Content-Type": "application/json",
       },
     });
-    alert(res.data.message);
+    alert(`匯入成功。
+    新增食材: ${res.data.newIngredients} 筆
+    新增庫存: ${res.data.stockRecords} 筆
+    `);
     await inventoryStore.loadIngredients(); //重新載入食材資料
     clearImport(); //清除匯入資料
   } catch (error) {
     console.error("匯入失敗:", error);
-    alert("匯入失敗。");
+    alert(`匯入失敗。
+    錯誤訊息: ${error.response.data.error}`);
   }
 };
 

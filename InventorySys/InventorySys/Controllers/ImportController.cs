@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using InventorySys.Models;
 using InventorySys.Data;
 namespace InventorySys.Controllers
@@ -14,41 +15,93 @@ namespace InventorySys.Controllers
         }
 
         [HttpPost]
-        public IActionResult ImportInventory(List<ImportInventoryDto> data)
+        public async Task<IActionResult> ImportInventory(List<ImportInventoryDto> data)
         {
-            foreach (var item in data)
+            if(data == null || !data.Any())
             {
-                var ingredient = _context.Ingredients.FirstOrDefault(i => i.Name == item.Name);
+                return BadRequest(new { message = "No data provided for import." });
+            }
 
-                if (ingredient == null) {
-                    ingredient = new Ingredients
+            using var transaction = _context.Database.BeginTransaction();
+
+            try
+            {
+                int newIngredientsCount = 0;
+                int StockRecordsCount = 0;
+                for(int index=0; index<data.Count; index++)
+                {
+                    var item = data[index];
+                    if (string.IsNullOrEmpty(item.Name))
                     {
-                        Name = item.Name,
-                        Unit = item.Unit
+                        throw new Exception(
+                            $"第 {index + 1} 列: 食材名稱不可空白"
+                        );
+                    }
+                    if (item.Stock <= 0)
+                    {
+                        throw new Exception(
+                            $"第 {index + 1} 列 {item.Name}: 庫存必須大於0"
+                        );
+                    }
+                }
+
+                var names = data.Select(x=>x.Name).ToList();
+
+                var ingredients = await _context.Ingredients.Where(i => names.Contains(i.Name)).ToListAsync();
+
+                for(int index=0; index<data.Count; index++)
+                {
+                    var item = data[index];
+                    if(!ingredients.Any(i => i.Name == item.Name.Trim() && i.Unit == item.Unit.Trim()))
+                    {
+                        var newIngredient = new Ingredients
+                        {
+                            Name = item.Name.Trim(),
+                            Unit = item.Unit.Trim()
+                        };
+                        _context.Ingredients.Add(newIngredient);
+                        newIngredientsCount++;
+                    }
+                }
+                await _context.SaveChangesAsync();
+
+                for(int index=0; index<data.Count; index++)
+                {
+                    var item = data[index];
+                    var ingredient = _context.Ingredients.First(i => i.Name == item.Name.Trim() && i.Unit == item.Unit.Trim());
+
+                    var stock = new StockRecord
+                    {
+                        IngredientId = ingredient.Id,
+                        Type = "IN",
+                        Quantity = item.Stock,
+                        Date = DateTime.Now
                     };
 
-                    _context.Ingredients.Add(ingredient);
-
-                    
+                    _context.StockRecords.Add(stock);
+                    StockRecordsCount++;
                 }
-            }
-            _context.SaveChanges();
-            foreach(var item in data)
-            {
-                var ingredient = _context.Ingredients.FirstOrDefault(i => i.Name == item.Name);
-                var stock = new StockRecord
+
+                await _context.SaveChangesAsync();
+                await  transaction.CommitAsync();
+
+                return Ok(new
                 {
-                    IngredientId = ingredient.Id,
-                    Type = "IN",
-                    Quantity = item.Stock,
-                    Date = DateTime.Now
-                };
-                
-                _context.StockRecords.Add(stock);
+                    message = "Inventory imported successfully.",
+                    newIngredients = newIngredientsCount,
+                    stockRecords = StockRecordsCount
+                });
             }
+            catch (Exception ex) {
+                transaction.Rollback();
+
+                return BadRequest(new
+                {
+                    message = "匯入失敗",
+                    error = ex.Message
+                });            
+             }
             
-            _context.SaveChanges();
-            return Ok(new { message = "Inventory imported successfully." });
         }
     }
 }
