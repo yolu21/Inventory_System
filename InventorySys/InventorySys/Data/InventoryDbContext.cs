@@ -10,5 +10,6 @@ namespace InventorySys.Data
 
         public DbSet<Ingredients> Ingredients { get; set; }
         public DbSet<StockRecord> StockRecords { get; set; }
+        public DbSet<ImportLog> ImportLog { get; set; }
     }
 }

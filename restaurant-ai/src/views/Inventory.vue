@@ -12,6 +12,7 @@ const keyword = ref("");
 const stockFilter = ref("all");
 const sortBy = ref("name");
 
+const fileName = ref("");
 const importData = ref([]); //匯入 Excel 資料
 const importErrors = ref([]); //匯入錯誤訊息
 const fileInput = ref(null); //檔案輸入框的引用
@@ -93,6 +94,8 @@ const importExcel = (event) => {
 
   if (!file) return;
 
+  fileName.value = file.name;
+
   const reader = new FileReader();
   reader.onload = (e) => {
     const data = new Uint8Array(e.target.result);
@@ -105,9 +108,9 @@ const importExcel = (event) => {
     const excelData = XLSX.utils.sheet_to_json(sheet);
 
     const json = excelData.map((item) => ({
-      Name: item["食材名稱"],
-      Unit: item["單位"],
-      Stock: item["庫存"],
+      Name: item["食材名稱"]?.trim(),
+      Unit: item["單位"]?.trim(),
+      Stock: Number(item["庫存"]),
     }));
     const errors = validateImportData(json);
     importErrors.value = errors;
@@ -135,10 +138,9 @@ const saveExcel = async () => {
   }
   console.log(importData.value);
   try {
-    const res = await api.post("/Import", importData.value, {
-      headers: {
-        "Content-Type": "application/json",
-      },
+    const res = await api.post("/Import", {
+      FileName: fileName.value,
+      Data: importData.value,
     });
     alert(`匯入成功。
     新增食材: ${res.data.newIngredients} 筆
@@ -148,14 +150,15 @@ const saveExcel = async () => {
     clearImport(); //清除匯入資料
   } catch (error) {
     console.error("匯入失敗:", error);
-    alert(`匯入失敗。
-    錯誤訊息: ${error.response.data.error}`);
+    alert(`匯入失敗\n${error.response?.data?.error || error.message}`);
   }
 };
 
 //清除匯入資料
 const clearImport = () => {
   importData.value = [];
+  importErrors.value = [];
+  fileName.value = "";
   if (fileInput.value) {
     fileInput.value.value = null; //清除檔案輸入框的值
   }
@@ -217,9 +220,21 @@ onMounted(async () => {
         accept=".xlsx, .xls"
         @change="importExcel"
       />
-      <button @click="saveExcel">Save</button>
+      <p v-if="fileName">📄 已選擇：{{ fileName }}</p>
+      <button @click="saveExcel" :disabled="importData.length === 0">
+        Save
+      </button>
       <button @click="clearImport">Clear</button>
       <button @click="exportExcel">📥 Download Excel</button>
+    </div>
+    <div v-if="importErrors.length > 0">
+      <h3>匯入錯誤</h3>
+
+      <ul>
+        <li v-for="(error, index) in importErrors" :key="index">
+          {{ error }}
+        </li>
+      </ul>
     </div>
     <div v-if="importData.length > 0" class="preview">
       <h2>📋 Excel 匯入預覽</h2>

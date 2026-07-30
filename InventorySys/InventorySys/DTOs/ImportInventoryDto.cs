@@ -1,4 +1,4 @@
-﻿namespace InventorySys.Models
+﻿namespace InventorySys.DTOs
 {
     public class ImportInventoryDto
     {
@@ -6,4 +6,5 @@
         public string Unit {  get; set; } = string.Empty;
         public decimal Stock {  get; set; } 
     }
+    
 }
