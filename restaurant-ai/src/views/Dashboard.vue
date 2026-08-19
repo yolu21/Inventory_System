@@ -1,12 +1,66 @@
 <script setup>
-import { ref, onMounted } from "vue";
+import { ref, onMounted, computed } from "vue";
 import { useDashboardStore } from "../stores/dashboard";
 
+import {
+  Chart as ChartJS,
+  Title,
+  Tooltip,
+  Legend,
+  BarElement,
+  CategoryScale,
+  LinearScale,
+} from "chart.js";
+
+import { Bar } from "vue-chartjs";
+
 const dashboardStore = useDashboardStore();
+
+ChartJS.register(
+  Title,
+  Tooltip,
+  Legend,
+  BarElement,
+  CategoryScale,
+  LinearScale,
+);
 
 onMounted(async () => {
   await dashboardStore.loadDashboard();
 });
+
+//=================
+// 庫存量 Chart
+//=================
+const stockChartData = computed(() => {
+  const ingredients = dashboardStore.overview?.ingredients ?? [];
+
+  return {
+    labels: ingredients.map((item) => item.name),
+    datasets: [
+      {
+        label: "庫存量",
+        backgroundColor: "#42A5F5",
+        data: ingredients.map((item) => item.stock),
+      },
+    ],
+  };
+});
+
+const stockChartOptions = {
+  responsive: true,
+  indexAxis: "y", // 設定為水平條形圖
+  maintainAspectRatio: false, // 設定為 false 以允許自動調整高度，依照CSS樣式設定高度
+  plugins: {
+    legend: {
+      position: "bottom",
+    },
+    title: {
+      display: true,
+      text: "各食材庫存量",
+    },
+  },
+};
 </script>
 <template>
   <div class="page">
@@ -59,7 +113,10 @@ onMounted(async () => {
         </tr>
       </tbody>
     </table>
-
+    <h2>📊 庫存圖表</h2>
+    <div class="chart-container">
+      <Bar :data="stockChartData" :options="stockChartOptions" />
+    </div>
     <!--低庫存食材-->
     <h2>⚠️ 低庫存食材</h2>
     <ul>
@@ -102,5 +159,11 @@ onMounted(async () => {
   font-size: 24px;
   font-weight: bold;
   margin: 0;
+}
+.chart-container {
+  width: 100%;
+  max-width: 800px;
+  height: 400px;
+  margin: 0 auto;
 }
 </style>
