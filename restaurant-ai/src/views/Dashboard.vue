@@ -40,13 +40,50 @@ const stockChartData = computed(() => {
     datasets: [
       {
         label: "庫存量",
-        backgroundColor: "#42A5F5",
         data: ingredients.map((item) => item.stock),
+        backgroundColor: ingredients.map((item) => getStockColor(item.stock)),
       },
     ],
   };
 });
 
+//低庫存chart
+const lowStockChartData = computed(() => {
+  const ingredients =
+    dashboardStore.overview?.ingredients?.filter((item) => item.stock < 10) ??
+    [];
+
+  return {
+    labels: ingredients.map((item) => item.name),
+    datasets: [
+      {
+        label: "目前庫存",
+        data: ingredients.map((item) => item.stock),
+        backgroundColor: ingredients.map((item) => getStockColor(item.stock)),
+      },
+    ],
+  };
+});
+// 進出貨 Chart
+const stockFlowChartData = computed(() => {
+  const ingredients = dashboardStore.overview?.ingredients ?? [];
+
+  return {
+    labels: ingredients.map((item) => item.name),
+    datasets: [
+      {
+        label: "進貨量",
+        data: ingredients.map((item) => item.in),
+        backgroundColor: ingredients.map((item) => getStockColor()),
+      },
+      {
+        label: "出貨量",
+        data: ingredients.map((item) => item.out),
+        backgroundColor: ingredients.map((item) => getStockColor()),
+      },
+    ],
+  };
+});
 const stockChartOptions = {
   responsive: true,
   indexAxis: "y", // 設定為水平條形圖
@@ -60,6 +97,23 @@ const stockChartOptions = {
       text: "各食材庫存量",
     },
   },
+};
+//BAR 顏色
+const STOCK_COLORS = {
+  LOW: "#EF5350",
+  WARNING: "#FFA726",
+  NORMAL: "#66BB6A",
+};
+const getStockColor = (stock) => {
+  if (stock < 10) {
+    return STOCK_COLORS.LOW;
+  }
+
+  if (stock < 30) {
+    return STOCK_COLORS.WARNING;
+  }
+
+  return STOCK_COLORS.NORMAL;
 };
 </script>
 <template>
@@ -127,7 +181,9 @@ const stockChartOptions = {
         {{ item.name }} - 庫存: {{ item.stock }}
       </li>
     </ul>
-
+    <div class="chart-container">
+      <Bar :data="lowStockChartData" :options="stockChartOptions" />
+    </div>
     <hr />
     <!--最多用量-->
 
@@ -140,6 +196,9 @@ const stockChartOptions = {
         {{ item.name }} - 用量: {{ item.out }}
       </li>
     </ol>
+    <div class="chart-container">
+      <Bar :data="stockFlowChartData" :options="stockChartOptions" />
+    </div>
   </div>
 </template>
 <style scoped>
