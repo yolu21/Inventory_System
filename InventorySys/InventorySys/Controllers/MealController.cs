@@ -5,6 +5,7 @@ using InventorySys.DTOs;
 using System.Threading.Tasks;
 using System.Linq;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Cryptography.X509Certificates;
 namespace InventorySys.Controllers
 {
 
@@ -74,6 +75,17 @@ namespace InventorySys.Controllers
                     message = "使用量大於 0"
                 });
             }
+            var exists = await _context.MealIngredients
+                .AnyAsync(x =>
+                x.MealId == mealId && x.IngredientId == data.IngredientId);
+
+            if (exists)
+            {
+                return BadRequest(new
+                {
+                    message = "此時才已經存在於此餐點 Bom。"
+                });
+            }
             var mealIngredient = new MealIngredient
             {
                 MealId = mealId,
@@ -91,6 +103,90 @@ namespace InventorySys.Controllers
             });
         }
 
+        //Delete Meal
+        [HttpDelete("id")]
+        public async Task<IActionResult> DeleteMeal(int id)
+        {
+            var meal = await _context.Meals.FirstOrDefaultAsync(x => x.Id == id);
+
+            if(meal == null)
+            {
+                return NotFound(new
+                {
+                    message = "找不到餐點。"
+                });
+            }
+
+            var mealIngredients = await _context.MealIngredients
+                .Where(x => x.MealId == id).ToListAsync();
+
+            //Delete all BOM
+            _context.MealIngredients.RemoveRange(mealIngredients);
+            //Delete Meal
+            _context.Meals.Remove(meal);
+
+            await _context.SaveChangesAsync();
+
+            return Ok(new
+            {
+                message = "餐點刪除成功。"
+            });
+        }
+
+        //Update Bom
+        [HttpPut("{mealId}/ingredients/{ingredientId}")]
+        public async Task<IActionResult> UpdateMealIngredient(int mealId,int ingredientId, UpdateMealIngredientDto data)
+        {
+            if(data.Quantity <= 0)
+            {
+                return BadRequest(new
+                {
+                    message = "用量必須大於 0"
+                });
+            }
+
+            var mealIngredient = await _context.MealIngredients
+                .FirstOrDefaultAsync(x =>
+                x.MealId == mealId && x.IngredientId == ingredientId);
+            if(mealIngredient == null)
+            {
+                return NotFound(new
+                {
+                    message = "找不到此 Bom。"
+                });
+            }
+
+            mealIngredient.Quantity = data.Quantity;
+
+            await _context.SaveChangesAsync();
+
+            return Ok(new
+            {
+                message = "Bom 修改成功。"
+            });
+        }
+        //Delete Bom
+        [HttpDelete("{mealId}/ingredients/{ingredientId}")]
+        public async Task<IActionResult> DeleteMealIngredients(int mealId, int ingredientId)
+        {
+            var mealIngredient = await _context.MealIngredients
+                .FirstOrDefaultAsync(x =>
+                    x.MealId == mealId && x.IngredientId == ingredientId);
+            if(mealIngredient == null)
+            {
+                return NotFound(new
+                {
+                    message = "找不到此 BOM。"
+                });
+            }
+            _context.MealIngredients.Remove(mealIngredient);
+            await _context.SaveChangesAsync();
+
+            return Ok(new
+            {
+                message = "BOM 刪除成功。"
+            });
+        }
         //Get Meal
         [HttpGet]
         public async Task<IActionResult> GetMeals() {
