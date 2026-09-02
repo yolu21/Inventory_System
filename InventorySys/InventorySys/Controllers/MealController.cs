@@ -3,11 +3,13 @@ using InventorySys.Data;
 using InventorySys.Models;
 using InventorySys.DTOs;
 using System.Threading.Tasks;
+using System.Linq;
+using Microsoft.EntityFrameworkCore;
 namespace InventorySys.Controllers
 {
 
     [ApiController]
-    [Route("controller")]
+    [Route("[controller]")]
     public class MealController : ControllerBase
     {
         private readonly InventoryDbContext _context;
@@ -16,6 +18,7 @@ namespace InventorySys.Controllers
 
             _context = context;
         }
+        //build Meal
         [HttpPost]
         public async Task<IActionResult> CreateMeal(MealDto data)
         {
@@ -41,7 +44,7 @@ namespace InventorySys.Controllers
                 name = meal.Name,
             });
         }
-
+        //Build Meal BOM
         [HttpPost("{mealId}/ingredients")]
         public async Task<IActionResult> AddIngredientToModel(int mealId, MealIngredientDto data)
         {
@@ -88,6 +91,59 @@ namespace InventorySys.Controllers
             });
         }
 
+        //Get Meal
+        [HttpGet]
+        public async Task<IActionResult> GetMeals() {
+            var meals = await _context.Meals.Select(m => new
+            {
+                m.Id,
+                m.Name
+            }).ToListAsync();
+
+            return Ok(meals);
+        }
+        //Get Meal BOM
+        [HttpGet("{id}")]
+        public async Task<IActionResult> GetMeal(int id)
+        {
+            var meal = await _context.Meals
+                .Where(m => m.Id == id)
+                .Select(m => new
+                {
+                    m.Id,
+                    m.Name,
+                    Ingredients = _context.MealIngredients
+                         .Where(mi => mi.MealId == m.Id)
+                        .Select(mi => new
+                        {
+                            IngredientId = mi.IngredientId,
+                            Name = _context.Ingredients
+                                .Where(i => i.Id == mi.IngredientId)
+                                .Select(i => i.Name)
+                                .FirstOrDefault(),
+                           // 從資料庫取得第一筆資料，找不到就回傳 null。
+                            Unit = _context.Ingredients
+                            .Where(i => i.Id == mi.IngredientId)
+                            .Select(i => i.Unit)
+                            .FirstOrDefault(),
+
+                            Quantity = mi.Quantity
+
+                        }).ToList()
+                }).FirstOrDefaultAsync();//非同步地從資料庫取得第一筆資料，找不到就回傳 null。
+
+            if (meal == null)
+            {
+                return NotFound(new
+                {
+                    message = "找不到餐點。"
+                });
+            }
+
+            return Ok(meal);
+        }
+
     }
+
 
 }
