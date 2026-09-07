@@ -5,7 +5,7 @@ using InventorySys.DTOs;
 using System.Threading.Tasks;
 using System.Linq;
 using Microsoft.EntityFrameworkCore;
-using System.Security.Cryptography.X509Certificates;
+using System.Collections.Generic;
 namespace InventorySys.Controllers
 {
 
@@ -104,7 +104,7 @@ namespace InventorySys.Controllers
         }
 
         //Delete Meal
-        [HttpDelete("id")]
+        [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteMeal(int id)
         {
             var meal = await _context.Meals.FirstOrDefaultAsync(x => x.Id == id);
@@ -239,6 +239,91 @@ namespace InventorySys.Controllers
             return Ok(meal);
         }
 
+        //Serve Meal
+        [HttpPost("{mealId}/serve")]
+        public async Task<IActionResult> ServeMeal(int mealId, ServeMealDto data)
+        {
+            //檢查出餐份數
+            if(data.Quantity <= 0)
+            {
+                return BadRequest(new
+                {
+                    message = "出餐份數必須大於 0 "
+                });
+            }
+
+            // 找餐點
+            var meal = await _context.Meals.FirstOrDefaultAsync(x => x.Id == mealId);
+            if(meal == null)
+            {
+                return NotFound(new
+                {
+                    message = "找不到餐點"
+                });
+            }
+
+            // 找到這個餐點BOM
+            var mealIngredients = await _context.MealIngredients.Where(x => x.MealId == mealId).ToListAsync();
+
+            if (!mealIngredients.Any())
+            {
+                return BadRequest(new
+                {
+                    message = "此餐點尚未建立 BOM"
+                });
+            }
+            // 取得相關食材庫存紀錄
+            var ingredientIds = mealIngredients.Select(x => x.IngredientId).ToList();
+            // 取得食材資料
+            var ingredients = await _context.Ingredients.Where(x => ingredientIds.Contains(x.Id)).ToListAsync();
+
+            // 取得相關庫存資料
+            var stockRecords = await _context.StockRecords
+                                .Where(x => ingredientIds.Contains(x.IngredientId)).ToListAsync();
+            // 計算目前庫存
+            var stockByIngredient = stockRecords.GroupBy(x => x.IngredientId)
+                                    .ToDictionary(g => g.Key,
+                                                  g => g.Sum(x => x.Type == "IN" ? x.Quantity : -x.Quantity));
+
+            //檢查庫存是否足夠
+            foreach(var item in mealIngredients)
+            {
+                var requiredQuantity = item.Quantity * data.Quantity;
+
+                var currStock = stockByIngredient.GetValueOrDefault(item.IngredientId, 0);
+                var ingredientName = ingredients.FirstOrDefault(x => x.Id == item.IngredientId)?.Name;
+                if(currStock < requiredQuantity)
+                {
+                    return BadRequest(new
+                    {
+                        message = $"食材「{ingredientName}」庫存不足",
+                        //ingredientId = item.IngredientId,
+                        currStock = currStock,
+                        requiredQuantity = requiredQuantity
+                    });
+                }
+            }
+            //庫存足夠，建立 OUT 庫存紀錄
+            foreach(var item in mealIngredients)
+            {
+                var requiredQuantity = item.Quantity * data.Quantity;
+                
+                var stockRecord = new StockRecord
+                {
+                    IngredientId = item.IngredientId,
+                    Type = "OUT",
+                    Quantity = requiredQuantity
+                };
+
+                _context.StockRecords.Add(stockRecord);
+            }
+            await _context.SaveChangesAsync();
+            return Ok(new
+            {
+                message = $"「{meal.Name}」出餐 {data.Quantity} 份成功，庫存已扣除"
+            });
+
+        }
     }
 
 
