@@ -60,7 +60,7 @@ namespace InventorySys.Controllers
 
             var ingredient = await _context.Ingredients.FindAsync(data.IngredientId);
 
-            if(ingredient == null)
+            if (ingredient == null)
             {
                 return NotFound(new
                 {
@@ -68,7 +68,7 @@ namespace InventorySys.Controllers
                 });
             }
 
-            if(data.Quantity <= 0)
+            if (data.Quantity <= 0)
             {
                 return BadRequest(new
                 {
@@ -109,7 +109,7 @@ namespace InventorySys.Controllers
         {
             var meal = await _context.Meals.FirstOrDefaultAsync(x => x.Id == id);
 
-            if(meal == null)
+            if (meal == null)
             {
                 return NotFound(new
                 {
@@ -135,9 +135,9 @@ namespace InventorySys.Controllers
 
         //Update Bom
         [HttpPut("{mealId}/ingredients/{ingredientId}")]
-        public async Task<IActionResult> UpdateMealIngredient(int mealId,int ingredientId, UpdateMealIngredientDto data)
+        public async Task<IActionResult> UpdateMealIngredient(int mealId, int ingredientId, UpdateMealIngredientDto data)
         {
-            if(data.Quantity <= 0)
+            if (data.Quantity <= 0)
             {
                 return BadRequest(new
                 {
@@ -148,7 +148,7 @@ namespace InventorySys.Controllers
             var mealIngredient = await _context.MealIngredients
                 .FirstOrDefaultAsync(x =>
                 x.MealId == mealId && x.IngredientId == ingredientId);
-            if(mealIngredient == null)
+            if (mealIngredient == null)
             {
                 return NotFound(new
                 {
@@ -172,7 +172,7 @@ namespace InventorySys.Controllers
             var mealIngredient = await _context.MealIngredients
                 .FirstOrDefaultAsync(x =>
                     x.MealId == mealId && x.IngredientId == ingredientId);
-            if(mealIngredient == null)
+            if (mealIngredient == null)
             {
                 return NotFound(new
                 {
@@ -189,7 +189,8 @@ namespace InventorySys.Controllers
         }
         //Get Meal
         [HttpGet]
-        public async Task<IActionResult> GetMeals() {
+        public async Task<IActionResult> GetMeals()
+        {
             var meals = await _context.Meals.Select(m => new
             {
                 m.Id,
@@ -217,7 +218,7 @@ namespace InventorySys.Controllers
                                 .Where(i => i.Id == mi.IngredientId)
                                 .Select(i => i.Name)
                                 .FirstOrDefault(),
-                           // 從資料庫取得第一筆資料，找不到就回傳 null。
+                            // 從資料庫取得第一筆資料，找不到就回傳 null。
                             Unit = _context.Ingredients
                             .Where(i => i.Id == mi.IngredientId)
                             .Select(i => i.Unit)
@@ -244,7 +245,7 @@ namespace InventorySys.Controllers
         public async Task<IActionResult> ServeMeal(int mealId, ServeMealDto data)
         {
             //檢查出餐份數
-            if(data.Quantity <= 0)
+            if (data.Quantity <= 0)
             {
                 return BadRequest(new
                 {
@@ -254,7 +255,7 @@ namespace InventorySys.Controllers
 
             // 找餐點
             var meal = await _context.Meals.FirstOrDefaultAsync(x => x.Id == mealId);
-            if(meal == null)
+            if (meal == null)
             {
                 return NotFound(new
                 {
@@ -285,14 +286,15 @@ namespace InventorySys.Controllers
                                     .ToDictionary(g => g.Key,
                                                   g => g.Sum(x => x.Type == "IN" ? x.Quantity : -x.Quantity));
 
+
             //檢查庫存是否足夠
-            foreach(var item in mealIngredients)
+            foreach (var item in mealIngredients)
             {
                 var requiredQuantity = item.Quantity * data.Quantity;
 
                 var currStock = stockByIngredient.GetValueOrDefault(item.IngredientId, 0);
                 var ingredientName = ingredients.FirstOrDefault(x => x.Id == item.IngredientId)?.Name;
-                if(currStock < requiredQuantity)
+                if (currStock < requiredQuantity)
                 {
                     return BadRequest(new
                     {
@@ -303,28 +305,42 @@ namespace InventorySys.Controllers
                     });
                 }
             }
-            //庫存足夠，建立 OUT 庫存紀錄
-            foreach(var item in mealIngredients)
+            using var transaction = await _context.Database.BeginTransactionAsync();
+            try
             {
-                var requiredQuantity = item.Quantity * data.Quantity;
-                
-                var stockRecord = new StockRecord
+                //庫存足夠，建立 OUT 庫存紀錄
+                foreach (var item in mealIngredients)
                 {
-                    IngredientId = item.IngredientId,
-                    Type = "OUT",
-                    Quantity = requiredQuantity
-                };
+                    var requiredQuantity = item.Quantity * data.Quantity;
 
-                _context.StockRecords.Add(stockRecord);
+                    var stockRecord = new StockRecord
+                    {
+                        IngredientId = item.IngredientId,
+                        Type = "OUT",
+                        Quantity = requiredQuantity
+                    };
+
+                    _context.StockRecords.Add(stockRecord);
+                }
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+                return Ok(new
+                {
+                    message = $"「{meal.Name}」出餐 {data.Quantity} 份成功，庫存已扣除"
+                });
             }
-            await _context.SaveChangesAsync();
-            return Ok(new
+            catch
             {
-                message = $"「{meal.Name}」出餐 {data.Quantity} 份成功，庫存已扣除"
-            });
+                await transaction.RollbackAsync();
+                return StatusCode(500, new
+                {
+                    message = "出餐失敗，請稍後再試"
+                });
 
+
+            }
         }
+
+
     }
-
-
 }
