@@ -1,11 +1,12 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using InventorySys.Data;
 using InventorySys.Models;
-
+using Microsoft.AspNetCore.Authorization;
 namespace InventorySys.Controllers
 {
     [ApiController]
     [Route("[controller]")]
+    [Authorize]
     public class DashboardController : ControllerBase
     {
         private readonly InventoryDbContext _context;

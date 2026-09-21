@@ -1,10 +1,12 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using InventorySys.Models;
 using InventorySys.Data;
+using Microsoft.AspNetCore.Authorization;
 namespace InventorySys.Controllers
 {
     [ApiController]
     [Route("[controller]")]
+    [Authorize]
     public class IngredientsController : ControllerBase
     {
         private readonly InventoryDbContext _context;

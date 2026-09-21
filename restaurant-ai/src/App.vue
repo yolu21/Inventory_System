@@ -5,7 +5,7 @@
     <!--左側選單-->
     <aside class="sidebar">
       <!--HTML5測欄用法-->
-      <router-link to="/">首頁</router-link>
+      <router-link to="/login">首頁</router-link>
       <router-link to="/dashboard">庫存管理</router-link>
       <router-link to="/inventory">新增庫存</router-link>
       <router-link to="/history">歷史記錄</router-link>

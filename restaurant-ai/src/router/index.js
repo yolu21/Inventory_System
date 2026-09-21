@@ -4,10 +4,11 @@ import Dashboard from "../views/Dashboard.vue";
 import Inventory from "../views/Inventory.vue";
 import History from "../views/History.vue";
 import Meal from "../views/Meal.vue";
+import Login from "../views/Login.vue";
 const routes = [
   {
     path: "/",
-    redirect: "/dashboard",
+    redirect: "/login",
   },
   {
     path: "/dashboard",
@@ -28,6 +29,11 @@ const routes = [
     path: "/meal",
     name: "Meal",
     component: Meal,
+  },
+  {
+    path: "/login",
+    name: "Login",
+    component: Login,
   },
 ];
 

@@ -6,11 +6,13 @@ using System.Threading.Tasks;
 using System.Linq;
 using Microsoft.EntityFrameworkCore;
 using System.Collections.Generic;
+using Microsoft.AspNetCore.Authorization;
 namespace InventorySys.Controllers
 {
 
     [ApiController]
     [Route("[controller]")]
+    [Authorize]
     public class MealController : ControllerBase
     {
         private readonly InventoryDbContext _context;

@@ -13,6 +13,7 @@ namespace InventorySys.Data
         public DbSet<ImportLog> ImportLog { get; set; }
         public DbSet<Meal>Meals { get; set; }
         public DbSet<MealIngredient> MealIngredients { get; set; }
+        public DbSet<User> Users { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

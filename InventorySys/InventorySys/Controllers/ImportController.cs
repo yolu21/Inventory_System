@@ -3,10 +3,12 @@ using Microsoft.EntityFrameworkCore;
 using InventorySys.Models;
 using InventorySys.Data;
 using InventorySys.DTOs;
+using Microsoft.AspNetCore.Authorization;
 namespace InventorySys.Controllers
 {
     [ApiController]
     [Route("[controller]")]
+    [Authorize]
     public class ImportController : ControllerBase
     {
         private readonly InventoryDbContext _context;
