@@ -49,7 +49,8 @@ namespace InventorySys.Controllers
 
             var claims = new[]
             {
-                new Claim(ClaimTypes.Name, user.UseName)
+                new Claim(ClaimTypes.Name, user.UseName),
+                new Claim(ClaimTypes.Role, user.Role)
             };
 
             var key = new SymmetricSecurityKey(
@@ -86,8 +87,9 @@ namespace InventorySys.Controllers
 
             var user = new User
             {
-                UseName = "admin",
-                PasswordHash = passwordHash
+                UseName = "user",
+                PasswordHash = passwordHash,
+                //Role = "Admin"
             };
 
             _context.Users.Add(user);

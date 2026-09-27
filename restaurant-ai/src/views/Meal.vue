@@ -3,6 +3,7 @@ import { ref, onMounted, computed } from "vue";
 import { api } from "../services/api";
 import { useMealStore } from "../stores/meal";
 import { storeToRefs } from "pinia";
+import { jwtDecode } from "jwt-decode";
 
 const mealStore = useMealStore();
 const { meals, mealBom, ingredients, loading, loadingBom } =
@@ -16,6 +17,13 @@ const bomQuantity = ref(""); // 每份用量
 const serveMealId = ref(""); // 選擇的餐點ID
 const serveQuantity = ref(1); // 出餐份數
 
+const token = localStorage.getItem("token");
+const user = token ? jwtDecode(token) : null;
+const roleClaim =
+  "http://schemas.microsoft.com/ws/2008/06/identity/claims/role";
+const isAdmin = user?.[roleClaim] === "Admin";
+
+console.log(jwtDecode(token));
 //新增餐點
 const createMeal = async () => {
   if (!newMealName.value.trim()) {
@@ -162,7 +170,7 @@ onMounted(async () => {
     </div>
     <hr />
     <!-- 新增餐點區塊  -->
-    <div class="create-meal">
+    <div v-if="isAdmin" class="create-meal">
       <input
         v-model="newMealName"
         placeholder="輸入餐點名稱"
@@ -181,7 +189,11 @@ onMounted(async () => {
         <strong>{{ meal.name }}</strong>
 
         <!-- .stop 點擊按鈕時，不繼續觸發父層 click-->
-        <button @click.stop="deleteMeal(meal.id)" class="delete-btn">
+        <button
+          v-if="isAdmin"
+          @click.stop="deleteMeal(meal.id)"
+          class="delete-btn"
+        >
           刪除
         </button>
         <span>
@@ -191,7 +203,7 @@ onMounted(async () => {
       <!-- 餐點BOM內容 -->
       <div v-if="expandedMealId === meal.id" class="bom">
         <!-- 新增BOM區塊 -->
-        <div class="add-bom">
+        <div v-if="isAdmin" class="add-bom">
           <select v-model="selectedIngredientId">
             <option value="">選擇食材</option>
             <option
@@ -225,7 +237,7 @@ onMounted(async () => {
               <th>食材名稱</th>
               <th>單位</th>
               <th>每份用量</th>
-              <th>操作</th>
+              <th v-if="isAdmin">操作</th>
             </tr>
           </thead>
           <tbody>
@@ -238,14 +250,19 @@ onMounted(async () => {
               <td>{{ bom.unit }}</td>
               <td>
                 <input
+                  v-if="isAdmin"
                   type="number"
                   v-model="bom.quantity"
                   min="0"
                   step="0.01"
                 />
+
+                <span v-else>
+                  {{ Number(bom.quantity).toFixed(2) }}
+                </span>
               </td>
 
-              <td>
+              <td v-if="isAdmin">
                 <button @click="updateBom(meal.id, bom)" class="update-btn">
                   更新
                 </button>

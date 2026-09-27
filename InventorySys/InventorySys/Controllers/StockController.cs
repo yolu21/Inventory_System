@@ -53,6 +53,7 @@ namespace InventorySys.Controllers
 
         //查看所有進出貨記錄
         [HttpGet]
+        [Authorize(Roles = "Admin")]
         public IActionResult GetRecords()
         {
             //LINQ Query Syntax 寫法

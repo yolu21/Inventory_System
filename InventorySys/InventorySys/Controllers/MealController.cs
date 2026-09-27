@@ -106,6 +106,7 @@ namespace InventorySys.Controllers
         }
 
         //Delete Meal
+        [Authorize(Roles = "Admin")]
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteMeal(int id)
         {
@@ -319,7 +320,8 @@ namespace InventorySys.Controllers
                     {
                         IngredientId = item.IngredientId,
                         Type = "OUT",
-                        Quantity = requiredQuantity
+                        Quantity = requiredQuantity,
+                        Date = DateTime.Now
                     };
 
                     _context.StockRecords.Add(stockRecord);
