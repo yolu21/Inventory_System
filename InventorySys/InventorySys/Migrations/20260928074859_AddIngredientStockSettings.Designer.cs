@@ -4,6 +4,7 @@ using InventorySys.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace InventorySys.Migrations
 {
     [DbContext(typeof(InventoryDbContext))]
-    partial class InventoryDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260928074859_AddIngredientStockSettings")]
+    partial class AddIngredientStockSettings
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -58,7 +61,7 @@ namespace InventorySys.Migrations
 
                     b.HasKey("id");
 
-                    b.ToTable("ImportLog", (string)null);
+                    b.ToTable("ImportLog");
                 });
 
             modelBuilder.Entity("InventorySys.Models.Ingredients", b =>
@@ -85,7 +88,7 @@ namespace InventorySys.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Ingredients", (string)null);
+                    b.ToTable("Ingredients");
                 });
 
             modelBuilder.Entity("InventorySys.Models.Meal", b =>
@@ -102,7 +105,7 @@ namespace InventorySys.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Meals", (string)null);
+                    b.ToTable("Meals");
                 });
 
             modelBuilder.Entity("InventorySys.Models.MealIngredient", b =>
@@ -128,7 +131,7 @@ namespace InventorySys.Migrations
 
                     b.HasIndex("MealId");
 
-                    b.ToTable("MealIngredients", (string)null);
+                    b.ToTable("MealIngredients");
                 });
 
             modelBuilder.Entity("InventorySys.Models.StockRecord", b =>
@@ -154,7 +157,7 @@ namespace InventorySys.Migrations
 
                     b.HasKey("id");
 
-                    b.ToTable("StockRecords", (string)null);
+                    b.ToTable("StockRecords");
                 });
 
             modelBuilder.Entity("InventorySys.Models.User", b =>
@@ -179,7 +182,7 @@ namespace InventorySys.Migrations
 
                     b.HasKey("id");
 
-                    b.ToTable("Users", (string)null);
+                    b.ToTable("Users");
                 });
 
             modelBuilder.Entity("InventorySys.Models.MealIngredient", b =>

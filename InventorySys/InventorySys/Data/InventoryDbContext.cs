@@ -23,6 +23,20 @@ namespace InventorySys.Data
             
             modelBuilder.Entity<MealIngredient>()
                 .HasOne<Ingredients>().WithMany().HasForeignKey(x => x.IngredientId);
+            // 食材單位成本
+            modelBuilder.Entity<Ingredients>()
+                .Property(x => x.UnitCost)
+                .HasPrecision(18, 2);
+
+            // 食材最低庫存量
+            modelBuilder.Entity<Ingredients>()
+                .Property(x => x.MinimumStock)
+                .HasPrecision(18, 2);
+
+            // 庫存異動數量
+            modelBuilder.Entity<StockRecord>()
+                .Property(x => x.Quantity)
+                .HasPrecision(18, 2);
         }
     }
 

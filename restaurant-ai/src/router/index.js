@@ -5,10 +5,16 @@ import Inventory from "../views/Inventory.vue";
 import History from "../views/History.vue";
 import Meal from "../views/Meal.vue";
 import Login from "../views/Login.vue";
+import Forecast from "../views/Forecast.vue";
 const routes = [
   {
     path: "/",
     redirect: "/login",
+  },
+  {
+    path: "/login",
+    name: "Login",
+    component: Login,
   },
   {
     path: "/dashboard",
@@ -43,10 +49,13 @@ const routes = [
       requireAuth: true,
     },
   },
-  {
-    path: "/login",
-    name: "Login",
-    component: Login,
+  {//預測庫存
+    path: "/forecast",
+    name: "Forecast",
+    component: Forecast,
+    meta: {
+      requireAuth: true,
+    },
   },
 ];
 

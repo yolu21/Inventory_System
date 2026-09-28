@@ -44,6 +44,7 @@ const logout = () => {
       <nav class="menu">
         <router-link to="/dashboard">庫存管理</router-link>
         <router-link v-if="isAdmin" to="/inventory">新增庫存</router-link>
+        <router-link to="/forecast">庫存預測</router-link>
         <router-link v-if="isAdmin" to="/history">歷史記錄</router-link>
         <router-link to="/meal">餐點管理</router-link>
       </nav>
