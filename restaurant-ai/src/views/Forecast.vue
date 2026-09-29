@@ -5,6 +5,12 @@ import { api } from "../services/api";
 const forecasts = ref([]);
 const loading = ref(false);
 
+//是否只顯示需要補貨的食材
+const showNeedReplenishment = ref(false);
+
+//排序方式
+const sortBy = ref("default");
+
 // 預設分析條件
 const usageDays = ref(14); //使用最近 14 天資料
 const forecastDays = ref(7); //預測未來 7 天
@@ -21,6 +27,37 @@ const needReplenishment = computed(() => {
 //預估補貨總成本
 const totalEstimatedCost = computed(() => {
   return forecasts.value.reduce((sum, item) => sum + item.estimatedCost, 0);
+});
+
+const filteredForecasts = computed(() => {
+  let result = [...forecasts.value];
+
+  //篩選
+  if (showNeedReplenishment.value) {
+    result = result.filter((item) => Number(item.suggestedPurchase || 0) > 0);
+  }
+
+  //排序
+  if (sortBy.value === "purchase-desc") {
+    result.sort(
+      (a, b) =>
+        Number(b.suggestedPurchase || 0) - Number(a.suggestedPurchase || 0),
+    );
+  }
+
+  if (sortBy.value === "cost-desc") {
+    result.sort(
+      (a, b) => Number(b.estimatedCost || 0) - Number(a.estimatedCost || 0),
+    );
+  }
+
+  if (sortBy.value === "stock-asc") {
+    result.sort(
+      (a, b) => Number(a.currentStock || 0) - Number(b.currentStock || 0),
+    );
+  }
+
+  return result;
 });
 const loadForecast = async () => {
   loading.value = true;
@@ -101,6 +138,32 @@ onMounted(() => {
       使用最近 {{ usageDays }} 天的庫存使用紀錄， 預測未來
       {{ forecastDays }} 天的需求。
     </p>
+    <div class="forecast-toolbar">
+      <div class="forecast-filter">
+        <button
+          :class="{ active: !showNeedReplenishment }"
+          @click="showNeedReplenishment = false"
+        >
+          全部
+        </button>
+        <button
+          :class="{ active: showNeedReplenishment }"
+          @click="showNeedReplenishment = true"
+        >
+          🔴 需要補貨
+        </button>
+      </div>
+      <div class="forecast-sort">
+        <label>排序：</label>
+
+        <select v-model="sortBy">
+          <option value="default">預設順序</option>
+          <option value="purchase-desc">建議補貨量：高 → 低</option>
+          <option value="cost-desc">預估成本：高 → 低</option>
+          <option value="stock-asc">目前庫存：低 → 高</option>
+        </select>
+      </div>
+    </div>
     <p v-if="loading">分析庫存中...</p>
 
     <table v-else>
@@ -117,7 +180,7 @@ onMounted(() => {
         </tr>
       </thead>
       <tbody>
-        <tr v-for="item in forecasts" :key="item.ingredientId">
+        <tr v-for="item in filteredForecasts" :key="item.ingredientId">
           <td>
             {{ item.ingredientName }}
           </td>
@@ -163,6 +226,43 @@ onMounted(() => {
   </div>
 </template>
 <style scoped>
+.forecast-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 20px 0;
+}
+
+.forecast-filter {
+  display: flex;
+  gap: 8px;
+}
+
+.forecast-filter button {
+  padding: 8px 16px;
+  border: 1px solid #ddd;
+  background: white;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.forecast-filter button.active {
+  background: #333;
+  color: white;
+  border-color: #333;
+}
+
+.forecast-sort {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.forecast-sort select {
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+}
 .forecast-settings {
   display: flex;
   align-items: center;

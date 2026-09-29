@@ -63,17 +63,26 @@ const logout = () => {
   display: flex;
   width: 100%;
   height: 100vh;
-} /* Sidebar */
+  overflow: hidden;
+}
+/* Sidebar */
 .sidebar {
   width: 200px;
   height: 100vh;
+  box-sizing: border-box;
   flex-shrink: 0;
+
   background: #2c3e50;
   color: white;
+
   padding: 20px;
+
   display: flex;
   flex-direction: column;
-} /* Logo */
+
+  overflow: hidden;
+}
+/* Logo */
 .logo {
   font-size: 20px;
   font-weight: bold;
@@ -105,13 +114,18 @@ const logout = () => {
 }
 .logout-btn:hover {
   background: #c0392b;
-} /* Content */
+}
+/* Content */
 .content {
   flex: 1;
-  height: 100vh;
+  min-width: 0;
+  min-height: 0;
+
   overflow-y: auto;
   overflow-x: hidden;
+
   padding: 20px;
   background: #f5f5f5;
+  box-sizing: border-box;
 }
 </style>
