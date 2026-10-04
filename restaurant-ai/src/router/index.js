@@ -6,6 +6,7 @@ import History from "../views/History.vue";
 import Meal from "../views/Meal.vue";
 import Login from "../views/Login.vue";
 import Forecast from "../views/Forecast.vue";
+import AIChat from "../views/AIChat.vue";
 const routes = [
   {
     path: "/",
@@ -49,13 +50,20 @@ const routes = [
       requireAuth: true,
     },
   },
-  {//預測庫存
+  {
+    //預測庫存
     path: "/forecast",
     name: "Forecast",
     component: Forecast,
     meta: {
       requireAuth: true,
     },
+  },
+  {
+    path: "/ai-chat",
+    name: "AIChat",
+    component: AIChat,
+    meta: { requiresAuth: true },
   },
 ];
 

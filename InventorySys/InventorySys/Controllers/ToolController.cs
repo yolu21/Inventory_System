@@ -28,5 +28,12 @@ namespace InventorySys.Controllers
             var result = await _toolService.GetInventoryForecast(usageDays, forecastDays);
             return Ok(result);
         }
+        // Tool3: GET: Tools/Inventory/Summary
+        [HttpGet("Summary")]
+        public async Task<IActionResult> GetInventorySummary()
+        {
+            var result = await _toolService.GetInventorySummary();
+            return Ok(result);
+        }
     }
 }

@@ -23,8 +23,21 @@ namespace InventorySys.Services
         //Tool2 : 取得庫存預測清單
         public async Task<List<InventoryForecastDto>> GetInventoryForecast(int usageDays = 14, int forecastDays = 7)
         {
-            return await _forecastService.GetForecast(usageDays, forecastDays); 
+            return await _forecastService.GetForecast(usageDays, forecastDays);
         }
-    }
 
+        //Tool3 : 取得庫存摘要資訊
+        public async Task<InventorySummaryDto> GetInventorySummary()
+        {
+            var forecasts = await _forecastService.GetForecast();
+            var summary = new InventorySummaryDto
+            {
+                TotalIngredients = forecasts.Count,
+                NeedReplenishment = forecasts.Count(x => x.SuggestedPurchase > 0),
+                TotalEstimatedCost = forecasts.Sum(x => x.EstimatedCost)
+            };
+            return summary;
+        }
+
+    }
 }
