@@ -22,6 +22,8 @@ builder.Services.AddDbContext<InventoryDbContext>(options =>
 
 //新增預測補貨量service
 builder.Services.AddScoped<ForecastService>();
+//新增庫存工具service
+builder.Services.AddScoped<InventoryToolService>();
 //JWT
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(options =>
 {
