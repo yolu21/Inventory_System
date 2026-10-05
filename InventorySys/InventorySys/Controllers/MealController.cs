@@ -2,10 +2,7 @@
 using InventorySys.Data;
 using InventorySys.Models;
 using InventorySys.DTOs;
-using System.Threading.Tasks;
-using System.Linq;
 using Microsoft.EntityFrameworkCore;
-using System.Collections.Generic;
 using Microsoft.AspNetCore.Authorization;
 namespace InventorySys.Controllers
 {

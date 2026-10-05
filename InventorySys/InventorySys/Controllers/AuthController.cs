@@ -1,7 +1,5 @@
-﻿using BCrypt.Net;
-using InventorySys.Data;
+﻿using InventorySys.Data;
 using InventorySys.DTOs;
-using InventorySys.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.IdentityModel.Tokens.Jwt;
@@ -77,29 +75,6 @@ namespace InventorySys.Controllers
             {
                 message = "登入成功",
                 token = tokenString
-            });
-        }
-        [HttpPost("create-test-user")]
-        public async Task<IActionResult> CreateTestUser()
-        {
-            string passwordHash =
-                BCrypt.Net.BCrypt.HashPassword("12345");
-
-            var user = new User
-            {
-                UseName = "user",
-                PasswordHash = passwordHash,
-                //Role = "Admin"
-            };
-
-            _context.Users.Add(user);
-
-            await _context.SaveChangesAsync();
-
-            return Ok(new
-            {
-                message = "測試帳號建立成功",
-                username = user.UseName
             });
         }
     }

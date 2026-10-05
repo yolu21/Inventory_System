@@ -49,7 +49,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJw
     };
 
 });
-builder.Services.AddAuthentication();
+//builder.Services.AddAuthentication();
 
 // 一定要有 Controller
 builder.Services.AddControllers();

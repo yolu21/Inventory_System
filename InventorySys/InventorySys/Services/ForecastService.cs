@@ -1,6 +1,5 @@
 ﻿using InventorySys.Data;
 using InventorySys.DTOs;
-using Microsoft.AspNetCore.Identity.Data;
 using Microsoft.EntityFrameworkCore;
 
 namespace InventorySys.Services

@@ -17,7 +17,7 @@ namespace InventorySys.Services
             //使用既有庫存預測邏輯
             var forecasts = await _forecastService.GetForecast();
 
-            //只留下需捕獲的食材
+            //只留下需補貨的食材
             return forecasts.Where(x => x.SuggestedPurchase > 0).ToList();
         }
         //Tool2 : 取得庫存預測清單

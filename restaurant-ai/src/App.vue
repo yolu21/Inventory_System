@@ -42,8 +42,8 @@ const logout = () => {
       <div class="logo">Inventory System</div>
       <!--HTML5測欄用法-->
       <nav class="menu">
-        <router-link to="/dashboard">庫存管理</router-link>
-        <router-link v-if="isAdmin" to="/inventory">新增庫存</router-link>
+        <router-link to="/dashboard">目前庫存</router-link>
+        <router-link v-if="isAdmin" to="/inventory">庫存管理</router-link>
         <router-link to="/forecast">庫存預測</router-link>
         <router-link to="/ai-chat">AI 庫存助理</router-link>
         <router-link v-if="isAdmin" to="/history">歷史記錄</router-link>

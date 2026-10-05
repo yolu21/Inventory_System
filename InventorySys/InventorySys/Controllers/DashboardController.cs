@@ -1,6 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using InventorySys.Data;
-using InventorySys.Models;
 using Microsoft.AspNetCore.Authorization;
 namespace InventorySys.Controllers
 {
