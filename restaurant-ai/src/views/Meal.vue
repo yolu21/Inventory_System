@@ -61,11 +61,7 @@ const addBom = async (mealId) => {
     return;
   }
 
-  await mealStore.addMealBom(
-    mealId,
-    selectedIngredientId.value,
-    bomQuantity.value,
-  );
+  await mealStore.addBom(mealId, selectedIngredientId.value, bomQuantity.value);
 
   selectedIngredientId.value = ""; // 清空選擇的食材
   bomQuantity.value = ""; // 清空用量輸入

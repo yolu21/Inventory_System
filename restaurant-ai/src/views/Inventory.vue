@@ -7,6 +7,8 @@ import * as XLSX from "xlsx";
 const inventoryStore = useInventoryStore();
 const newName = ref("");
 const newUnit = ref("");
+const newMinimumStock = ref("");
+const unitCost = ref("");
 
 const keyword = ref("");
 const stockFilter = ref("all");
@@ -56,10 +58,14 @@ const addIngredient = async () => {
   await inventoryStore.addIngredient({
     name: newName.value,
     unit: newUnit.value,
+    minimumStock: newMinimumStock.value || 0,
+    unitCost: unitCost.value || 0,
   });
 
   newName.value = "";
   newUnit.value = "";
+  newMinimumStock.value = "";
+  unitCost.value = "";
 };
 
 const deleteIngredient = async (item) => {
@@ -197,6 +203,12 @@ onMounted(async () => {
     <div class="toolbar">
       <input v-model="newName" placeholder="Ingredient Name" />
       <input v-model="newUnit" placeholder="Unit" />
+      <input
+        v-model="newMinimumStock"
+        type="number"
+        placeholder="Minimum Stock"
+      />
+      <input v-model="unitCost" type="number" placeholder="Unit Cost" />
       <button @click="addIngredient">➕ Add Ingredient</button>
     </div>
     <div class="toolbar">
@@ -245,6 +257,9 @@ onMounted(async () => {
             <th>食材名稱</th>
             <th>單位</th>
             <th>庫存</th>
+            <th>操作</th>
+            <th>最低庫存</th>
+            <th>單價</th>
           </tr>
         </thead>
         <tbody>
@@ -252,6 +267,8 @@ onMounted(async () => {
             <td>{{ item["Name"] }}</td>
             <td>{{ item["Unit"] }}</td>
             <td>{{ item["Stock"] }}</td>
+            <td>{{ item["MinimumStock"] }}</td>
+            <td>{{ item["UnitCost"] }}</td>
           </tr>
         </tbody>
       </table>
@@ -262,7 +279,9 @@ onMounted(async () => {
           <th>Name</th>
           <th>Unit</th>
           <th>Stock</th>
-          <th>Action</th>
+          <th>Actions</th>
+          <th>Minimum Stock</th>
+          <th>Unit Cost</th>
         </tr>
       </thead>
       <tbody>
@@ -271,7 +290,9 @@ onMounted(async () => {
           <td>{{ item.unit }}</td>
           <td>
             {{ item.stock }}
-            <span v-if="item.stock < 10" class="warning"> (Low Stock) </span>
+            <span v-if="item.stock < item.minimumStock" class="warning">
+              (Low Stock)
+            </span>
           </td>
           <td>
             <input type="number" v-model="item.amount" placeholder="Qty" />
@@ -279,6 +300,8 @@ onMounted(async () => {
             <button @click="removeStock(item)">➖ OUT</button>
             <button @click="deleteIngredient(item)">❌ Delete</button>
           </td>
+          <td>{{ item.minimumStock }} {{ item.unit }}</td>
+          <td>{{ item.unitCost }}元 / {{ item.unit }}</td>
         </tr>
       </tbody>
     </table>
