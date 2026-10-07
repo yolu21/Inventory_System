@@ -8,11 +8,19 @@ const router = useRouter();
 const username = ref("");
 const password = ref("");
 const errorMessage = ref("");
+const isLoading = ref(false);
 
 const login = async () => {
   errorMessage.value = "";
 
+  if (!username.value || !password.value) {
+    errorMessage.value = "請輸入帳號與密碼";
+    return;
+  }
+
   try {
+    isLoading.value = true;
+
     const response = await api.post("/Auth/login", {
       username: username.value,
       password: password.value,
@@ -20,143 +28,219 @@ const login = async () => {
 
     localStorage.setItem("token", response.data.token);
 
-    window.location.href = "/dashboard";
+    router.push("/dashboard");
   } catch (error) {
+    console.error("登入失敗:", error);
+
     errorMessage.value = "帳號或密碼錯誤";
+  } finally {
+    isLoading.value = false;
   }
 };
 </script>
 
 <template>
-  <form @submit.prevent="login">
-    <div class="login-page">
-      <div class="login-card">
-        <h1>Inventory System</h1>
-        <p class="subtitle">庫存管理系統</p>
+  <div class="login-page">
+    <div class="login-card">
+      <!-- Brand -->
+      <div class="login-brand">
+        <div class="brand-icon">IS</div>
 
-        <form @submit.prevent="login">
-          <div class="form-group">
-            <label>帳號</label>
-            <input v-model="username" type="text" placeholder="請輸入帳號" />
-          </div>
+        <h1>Inventory Management</h1>
 
-          <div class="form-group">
-            <label>密碼</label>
-            <input
-              v-model="password"
-              type="password"
-              placeholder="請輸入密碼"
-            />
-          </div>
-
-          <p v-if="errorMessage" class="error">
-            {{ errorMessage }}
-          </p>
-
-          <button type="submit" class="login-btn">登入</button>
-        </form>
+        <p>餐廳庫存管理系統</p>
       </div>
+
+      <!-- Login Form -->
+      <form class="login-form" @submit.prevent="login">
+        <!-- Username -->
+        <div class="form-group">
+          <label class="form-label" for="username"> 帳號 </label>
+
+          <input
+            id="username"
+            v-model="username"
+            class="form-input"
+            type="text"
+            placeholder="請輸入帳號"
+            autocomplete="username"
+          />
+        </div>
+
+        <!-- Password -->
+        <div class="form-group">
+          <label class="form-label" for="password"> 密碼 </label>
+
+          <input
+            id="password"
+            v-model="password"
+            class="form-input"
+            type="password"
+            placeholder="請輸入密碼"
+            autocomplete="current-password"
+          />
+        </div>
+
+        <!-- Error -->
+        <div v-if="errorMessage" class="login-error">
+          {{ errorMessage }}
+        </div>
+
+        <!-- Submit -->
+        <button
+          type="submit"
+          class="btn btn-primary login-btn"
+          :disabled="isLoading"
+        >
+          {{ isLoading ? "登入中..." : "登入" }}
+        </button>
+      </form>
     </div>
-  </form>
+  </div>
 </template>
 
 <style scoped>
+/* ========================================
+   Login Page
+======================================== */
+
 .login-page {
-  width: 100%;
-  height: 100vh;
+  min-height: 100vh;
 
   display: flex;
-  justify-content: center;
   align-items: center;
+  justify-content: center;
 
-  background: #f5f7fa;
+  padding: var(--spacing-6);
+
+  background: var(--color-bg);
 }
 
+/* ========================================
+   Login Card
+======================================== */
+
 .login-card {
-  width: 360px;
+  width: 100%;
+  max-width: 400px;
 
   padding: 40px;
 
-  background: white;
+  background: var(--color-surface);
 
-  border-radius: 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
 
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-lg);
 }
 
-.login-card h1 {
+/* ========================================
+   Brand
+======================================== */
+
+.login-brand {
+  margin-bottom: var(--spacing-8);
+
+  text-align: center;
+}
+
+.brand-icon {
+  width: 48px;
+  height: 48px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  margin: 0 auto var(--spacing-4);
+
+  color: #ffffff;
+  background: var(--color-primary);
+
+  border-radius: var(--radius-md);
+
+  font-size: 16px;
+  font-weight: var(--font-weight-bold);
+}
+
+.login-brand h1 {
   margin: 0;
 
-  text-align: center;
+  color: var(--color-text-primary);
 
-  color: #2c3e50;
+  font-size: 24px;
+  font-weight: var(--font-weight-bold);
 }
 
-.subtitle {
-  margin-top: 8px;
-  margin-bottom: 30px;
+.login-brand p {
+  margin: var(--spacing-2) 0 0;
 
-  text-align: center;
-
-  color: #7f8c8d;
-}
-
-.form-group {
-  display: flex;
-  flex-direction: column;
-
-  margin-bottom: 20px;
-}
-
-.form-group label {
-  margin-bottom: 6px;
-
-  font-weight: bold;
-  color: #34495e;
-}
-
-.form-group input {
-  padding: 10px 12px;
-
-  border: 1px solid #ddd;
-  border-radius: 5px;
+  color: var(--color-text-secondary);
 
   font-size: 14px;
-
-  box-sizing: border-box;
 }
 
-.form-group input:focus {
-  outline: none;
-  border-color: #3498db;
+/* ========================================
+   Form
+======================================== */
+
+.login-form {
+  width: 100%;
 }
+
+.login-form .form-group {
+  margin-bottom: var(--spacing-5);
+}
+
+/* ========================================
+   Error
+======================================== */
+
+.login-error {
+  margin-bottom: var(--spacing-4);
+
+  padding: var(--spacing-3) var(--spacing-4);
+
+  color: var(--color-danger);
+
+  background: var(--color-danger-light);
+
+  border: 1px solid #fecaca;
+  border-radius: var(--radius-md);
+
+  font-size: 14px;
+}
+
+/* ========================================
+   Login Button
+======================================== */
 
 .login-btn {
   width: 100%;
 
-  padding: 11px;
-
-  border: none;
-  border-radius: 5px;
-
-  background: #3498db;
-  color: white;
-
-  font-size: 16px;
-
-  cursor: pointer;
+  margin-top: var(--spacing-2);
 }
 
-.login-btn:hover {
-  background: #2980b9;
+.login-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
-.error {
-  margin-top: 0;
-  margin-bottom: 15px;
+/* ========================================
+   Responsive
+======================================== */
 
-  color: #e74c3c;
+@media (max-width: 480px) {
+  .login-page {
+    padding: var(--spacing-4);
+  }
 
-  font-size: 14px;
+  .login-card {
+    padding: 28px 24px;
+  }
+
+  .login-brand h1 {
+    font-size: 21px;
+  }
 }
 </style>
