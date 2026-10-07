@@ -34,7 +34,7 @@ namespace InventorySys.Controllers
             {
                 var records = stockRecords.Where(r => r.IngredientId == i.Id);
                 var stock = records.Where(r => r.Type == "IN").Sum(r => r.Quantity) - records.Where(r => r.Type == "OUT").Sum(r => r.Quantity);
-                return stock < 10;
+                return stock < i.MinimumStock;
             });
 
             return Ok(new
@@ -70,13 +70,14 @@ namespace InventorySys.Controllers
                     i.Id,
                     i.Name,
                     i.Unit,
+                    i.MinimumStock,
                     In = inQty,
                     Out = OutQty,
                     Stock = stock
                 };
             }).ToList();
 
-            var lowStock = data.Where(d => d.Stock < 10).ToList();
+            var lowStock = data.Where(d => d.Stock < d.MinimumStock).ToList();
 
             var topUsage = data
             .OrderByDescending(x => x.Out)

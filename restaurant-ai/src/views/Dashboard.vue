@@ -518,11 +518,17 @@ const topUsageItems = computed(() => {
               </td>
 
               <td>
-                <span v-if="item.stock < 10" class="badge badge-danger">
+                <span
+                  v-if="item.stock < item.minimumStock"
+                  class="badge badge-danger"
+                >
                   低庫存
                 </span>
 
-                <span v-else-if="item.stock < 30" class="badge badge-warning">
+                <span
+                  v-else-if="item.stock < item.maximumStock + 5"
+                  class="badge badge-warning"
+                >
                   注意
                 </span>
 
