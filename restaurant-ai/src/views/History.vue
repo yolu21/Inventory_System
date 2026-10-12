@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, computed } from "vue";
+import { ref, onMounted, computed, watch } from "vue";
 import { useHistoryStore } from "../stores/history";
 
 const historyStore = useHistoryStore();
@@ -23,25 +23,48 @@ const keyword = ref("");
 const typeFilter = ref("all");
 const sortBy = ref("name");
 
+// 預設選擇當月
+const getCurrentMonth = () => {
+  const now = new Date();
+
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+};
+
+const monthFilter = ref(getCurrentMonth());
+
+// 分頁設定
+const currentPage = ref(1);
+const pageSize = 20;
 const filteredHistory = computed(() => {
   let list = [...historyStore.history];
 
-  // 搜尋
-  if (keyword.value) {
-    const searchKeyword = keyword.value.toLowerCase();
+  // 月份篩選
+  if (monthFilter.value !== "all") {
+    list = list.filter((item) => {
+      const date = new Date(item.date);
+
+      if (Number.isNaN(date.getTime())) return false;
+
+      const month = `${date.getFullYear()}-${String(
+        date.getMonth() + 1,
+      ).padStart(2, "0")}`;
+
+      return month === monthFilter.value;
+    });
+  }
+
+  // 搜尋食材名稱
+  if (keyword.value.trim()) {
+    const searchKeyword = keyword.value.trim().toLowerCase();
 
     list = list.filter((item) =>
-      item.ingredientName.toLowerCase().includes(searchKeyword),
+      (item.ingredientName || "").toLowerCase().includes(searchKeyword),
     );
   }
 
-  // 篩選
-  if (typeFilter.value === "IN") {
-    list = list.filter((item) => item.type === "IN");
-  }
-
-  if (typeFilter.value === "OUT") {
-    list = list.filter((item) => item.type === "OUT");
+  // 進出庫篩選
+  if (typeFilter.value !== "all") {
+    list = list.filter((item) => item.type === typeFilter.value);
   }
 
   // 排序
@@ -51,7 +74,9 @@ const filteredHistory = computed(() => {
       break;
 
     case "name":
-      list.sort((a, b) => a.ingredientName.localeCompare(b.ingredientName));
+      list.sort((a, b) =>
+        (a.ingredientName || "").localeCompare(b.ingredientName || ""),
+      );
       break;
 
     case "date":
@@ -62,6 +87,49 @@ const filteredHistory = computed(() => {
   return list;
 });
 
+const monthOptions = computed(() => {
+  const months = new Set([getCurrentMonth()]);
+
+  historyStore.history.forEach((item) => {
+    const date = new Date(item.date);
+
+    if (!Number.isNaN(date.getTime())) {
+      const month = `${date.getFullYear()}-${String(
+        date.getMonth() + 1,
+      ).padStart(2, "0")}`;
+
+      months.add(month);
+    }
+  });
+
+  return [...months]
+    .sort((a, b) => b.localeCompare(a))
+    .map((month) => {
+      const [year, monthNumber] = month.split("-");
+
+      return {
+        value: month,
+        label: `${year} 年 ${Number(monthNumber)} 月`,
+      };
+    });
+});
+//新增分頁計算
+// 總頁數
+const totalPages = computed(() =>
+  Math.max(1, Math.ceil(filteredHistory.value.length / pageSize)),
+);
+
+// 當前頁面的紀錄
+const paginatedHistory = computed(() => {
+  const start = (currentPage.value - 1) * pageSize;
+
+  return filteredHistory.value.slice(start, start + pageSize);
+});
+
+// 切換搜尋、篩選或排序時回到第 1 頁
+watch([keyword, typeFilter, sortBy, monthFilter], () => {
+  currentPage.value = 1;
+});
 /* ========================================
    Lifecycle
 ======================================== */
@@ -105,6 +173,18 @@ onMounted(async () => {
             />
           </div>
 
+          <!-- 月份篩選 -->
+          <select v-model="monthFilter" class="form-select filter-select">
+            <option value="all">全部月份</option>
+
+            <option
+              v-for="month in monthOptions"
+              :key="month.value"
+              :value="month.value"
+            >
+              {{ month.label }}
+            </option>
+          </select>
           <!-- Type -->
 
           <select v-model="typeFilter" class="form-select filter-select">
@@ -158,46 +238,28 @@ onMounted(async () => {
           </thead>
 
           <tbody>
-            <tr v-for="record in filteredHistory" :key="record.id">
-              <!-- Date -->
+            <tr v-for="record in paginatedHistory" :key="record.id">
+              <td>{{ formatDate(record.date) }}</td>
 
               <td>
-                {{ formatDate(record.date) }}
+                <strong>{{ record.ingredientName }}</strong>
               </td>
-
-              <!-- Ingredient -->
-
-              <td>
-                <strong>
-                  {{ record.ingredientName }}
-                </strong>
-              </td>
-
-              <!-- Type -->
 
               <td>
                 <span v-if="record.type === 'IN'" class="badge badge-success">
                   IN
                 </span>
-
                 <span v-else class="badge badge-danger"> OUT </span>
               </td>
 
-              <!-- Quantity -->
-
-              <td>
-                {{ record.quantity }}
-              </td>
+              <td>{{ record.quantity }}</td>
             </tr>
 
-            <!-- No Search Result -->
-
+            <!-- 沒有符合條件的紀錄 -->
             <tr v-if="filteredHistory.length === 0">
               <td colspan="4" class="empty-table">
                 <div class="empty-icon">🔍</div>
-
                 <div class="empty-title">找不到符合條件的紀錄</div>
-
                 <div class="empty-description">
                   請嘗試調整搜尋條件或篩選條件。
                 </div>
@@ -206,7 +268,31 @@ onMounted(async () => {
           </tbody>
         </table>
       </div>
+      <!-- 分頁 -->
+      <div v-if="filteredHistory.length > 0" class="pagination">
+        <span class="pagination-info">
+          第 {{ currentPage }} / {{ totalPages }} 頁 （共
+          {{ filteredHistory.length }} 筆）
+        </span>
 
+        <div class="pagination-actions">
+          <button
+            class="pagination-btn"
+            :disabled="currentPage === 1"
+            @click="currentPage--"
+          >
+            上一頁
+          </button>
+
+          <button
+            class="pagination-btn"
+            :disabled="currentPage === totalPages"
+            @click="currentPage++"
+          >
+            下一頁
+          </button>
+        </div>
+      </div>
       <!-- No History -->
 
       <div v-else class="empty-state">
@@ -226,15 +312,13 @@ onMounted(async () => {
 /* ========================================
    Page
 ======================================== */
-
 .history-page {
   width: 100%;
 }
 
 /* ========================================
-   Filter
+   Filter Toolbar
 ======================================== */
-
 .filter-card {
   margin-bottom: var(--spacing-5);
 }
@@ -252,12 +336,9 @@ onMounted(async () => {
 
 .search-icon {
   position: absolute;
-
   left: 12px;
   top: 50%;
-
   transform: translateY(-50%);
-
   pointer-events: none;
 }
 
@@ -276,58 +357,83 @@ onMounted(async () => {
 /* ========================================
    History Table
 ======================================== */
-
 .history-card {
   overflow: hidden;
 }
 
 .empty-table {
   padding: 56px 20px !important;
-
   text-align: center;
 }
 
 /* ========================================
    Empty State
 ======================================== */
-
 .empty-state {
   min-height: 280px;
-
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-
   padding: var(--spacing-8);
-
   text-align: center;
 }
 
 .empty-icon {
   margin-bottom: var(--spacing-3);
-
   font-size: 36px;
 }
 
 .empty-title {
   margin-bottom: var(--spacing-1);
-
   color: var(--color-text-primary);
-
   font-weight: var(--font-weight-semibold);
 }
 
 .empty-description {
   color: var(--color-text-secondary);
-
   font-size: var(--font-size-sm);
+}
+
+/* ========================================
+   Pagination
+======================================== */
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-3);
+  padding: 16px 20px;
+  border-top: 1px solid var(--color-border, #e5e7eb);
+}
+
+.pagination-info {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.pagination-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.pagination-btn {
+  padding: 8px 12px;
+  border: 1px solid var(--color-border, #d1d5db);
+  border-radius: 6px;
+  background: var(--color-bg-primary, #fff);
+  color: var(--color-text-primary);
+  cursor: pointer;
+}
+
+.pagination-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 /* ========================================
    Responsive
 ======================================== */
-
 @media (max-width: 900px) {
   .filter-row {
     flex-wrap: wrap;
@@ -347,6 +453,15 @@ onMounted(async () => {
   .filter-select,
   .sort-select {
     width: 100%;
+  }
+
+  .pagination {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .pagination-actions {
+    justify-content: space-between;
   }
 }
 </style>

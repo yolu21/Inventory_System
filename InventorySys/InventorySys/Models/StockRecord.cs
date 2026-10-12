@@ -5,7 +5,7 @@
         public int id { get; set; }
         public int IngredientId { get; set; }
 
-        //public Ingredients Ingredients { get; set; }
+        public Ingredients Ingredients { get; set; }
         public string Type { get; set; } = string.Empty;//IN/OUT
 
         public decimal Quantity { get; set; }

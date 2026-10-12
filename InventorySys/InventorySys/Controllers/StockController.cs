@@ -42,15 +42,82 @@ namespace InventorySys.Controllers
         }
         [HttpPost]
         //新增進出貨紀錄
+        [HttpPost]
         public IActionResult AddStockRecord(StockRecord record)
         {
+            // 檢查數量
+            if (record.Quantity <= 0)
+            {
+                return BadRequest(new
+                {
+                    message = "進出貨數量必須大於 0"
+                });
+            }
+
+            // 檢查異動類型
+            if (string.IsNullOrWhiteSpace(record.Type))
+            {
+                return BadRequest(new
+                {
+                    message = "請指定進出貨類型"
+                });
+            }
+
+            record.Type = record.Type.Trim().ToUpperInvariant();
+
+            if (record.Type != "IN" && record.Type != "OUT")
+            {
+                return BadRequest(new
+                {
+                    message = "異動類型只能是 IN 或 OUT"
+                });
+            }
+
+            // 檢查食材是否存在
+            var ingredient = _context.Ingredients.Find(record.IngredientId);
+
+            if (ingredient == null)
+            {
+                return NotFound(new
+                {
+                    message = "找不到此食材"
+                });
+            }
+
+            // 出貨前檢查目前庫存
+            if (record.Type == "OUT")
+            {
+                var records = _context.StockRecords
+                    .Where(x => x.IngredientId == record.IngredientId)
+                    .ToList();
+
+                var totalIn = records
+                    .Where(x => x.Type == "IN")
+                    .Sum(x => x.Quantity);
+
+                var totalOut = records
+                    .Where(x => x.Type == "OUT")
+                    .Sum(x => x.Quantity);
+
+                var currentStock = totalIn - totalOut;
+
+                if (record.Quantity > currentStock)
+                {
+                    return BadRequest(new
+                    {
+                        message = $"庫存不足，目前庫存為 {currentStock}"
+                    });
+                }
+            }
+
+            // 通過檢核後才建立紀錄
             record.Date = DateTime.Now;
 
             _context.StockRecords.Add(record);
             _context.SaveChanges();
+
             return Ok(record);
         }
-
         //查看所有進出貨記錄
         [HttpGet]
         [Authorize(Roles = "Admin")]
@@ -74,5 +141,7 @@ namespace InventorySys.Controllers
             return Ok(data.ToList());
 
         }
+
+
     }
 }

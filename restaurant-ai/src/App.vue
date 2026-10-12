@@ -1,11 +1,18 @@
 <script setup>
-import { computed } from "vue";
+import { computed, onMounted, onUnmounted } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { jwtDecode } from "jwt-decode";
 
 const router = useRouter();
 const route = useRoute();
 
+const IDLE_TIMEOUT = 30 * 60 * 1000;
+
+let idleTimer = null;
+let tokenTimer = null;
+let isLoggingOut = false;
+
+// 取得使用者角色
 const getRole = () => {
   const token = localStorage.getItem("token");
 
@@ -13,7 +20,6 @@ const getRole = () => {
 
   try {
     const user = jwtDecode(token);
-
     return user["http://schemas.microsoft.com/ws/2008/06/identity/claims/role"];
   } catch {
     return null;
@@ -22,12 +28,98 @@ const getRole = () => {
 
 const isAdmin = computed(() => getRole() === "Admin");
 
+// 登出
 const logout = () => {
-  localStorage.removeItem("token");
-  router.push("/login");
-};
-</script>
+  if (isLoggingOut) return;
 
+  isLoggingOut = true;
+
+  clearTimeout(idleTimer);
+  clearTimeout(tokenTimer);
+
+  localStorage.removeItem("token");
+
+  // 使用 Vue Router 返回登入頁
+  if (route.path !== "/login") {
+    router.replace("/login").finally(() => {
+      isLoggingOut = false;
+    });
+  } else {
+    isLoggingOut = false;
+  }
+};
+
+// 檢查 Token 並設定到期倒數
+const checkToken = () => {
+  const token = localStorage.getItem("token");
+
+  if (!token) {
+    clearTimeout(idleTimer);
+    clearTimeout(tokenTimer);
+    return false;
+  }
+
+  try {
+    const user = jwtDecode(token);
+
+    if (!user.exp || user.exp * 1000 <= Date.now()) {
+      logout();
+      return false;
+    }
+
+    clearTimeout(tokenTimer);
+
+    tokenTimer = setTimeout(logout, user.exp * 1000 - Date.now());
+
+    return true;
+  } catch {
+    logout();
+    return false;
+  }
+};
+
+// 重設閒置計時
+const resetIdleTimer = () => {
+  if (route.path === "/login") return;
+  if (!checkToken()) return;
+
+  clearTimeout(idleTimer);
+  idleTimer = setTimeout(logout, IDLE_TIMEOUT);
+};
+
+// 使用者操作時重設閒置時間
+const handleActivity = () => {
+  resetIdleTimer();
+};
+
+const activityEvents = [
+  "mousedown",
+  "keydown",
+  "scroll",
+  "touchstart",
+  "click",
+];
+
+onMounted(() => {
+  activityEvents.forEach((event) => {
+    window.addEventListener(event, handleActivity);
+  });
+
+  // 進入應用程式時檢查 Token
+  if (route.path !== "/login") {
+    resetIdleTimer();
+  }
+});
+
+onUnmounted(() => {
+  clearTimeout(idleTimer);
+  clearTimeout(tokenTimer);
+
+  activityEvents.forEach((event) => {
+    window.removeEventListener(event, handleActivity);
+  });
+});
+</script>
 <template>
   <!-- Login page -->
   <template v-if="route.path === '/login'">

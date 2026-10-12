@@ -76,16 +76,41 @@ const filteredIngredients = computed(() => {
 ======================================== */
 
 const addIngredient = async () => {
-  if (!newName.value || !newUnit.value) {
+  const name = newName.value.trim();
+  const unit = newUnit.value.trim();
+  const minimumStock = Number(newMinimumStock.value || 0);
+  const cost = Number(unitCost.value || 0);
+
+  if (!name || !unit) {
     alert("請輸入食材名稱與單位");
     return;
   }
 
+  // 檢查食材名稱是否重複
+  const exists = inventoryStore.inventory.some(
+    (item) => item.name.trim().toLowerCase() === name.toLowerCase(),
+  );
+
+  if (exists) {
+    alert(`食材「${name}」已存在，請勿重複新增`);
+    return;
+  }
+
+  if (
+    !Number.isFinite(minimumStock) ||
+    minimumStock < 0 ||
+    !Number.isFinite(cost) ||
+    cost < 0
+  ) {
+    alert("最低庫存與單價必須大於0的數字");
+    return;
+  }
+
   await inventoryStore.addIngredient({
-    name: newName.value,
-    unit: newUnit.value,
-    minimumStock: newMinimumStock.value || 0,
-    unitCost: unitCost.value || 0,
+    name,
+    unit,
+    minimumStock,
+    unitCost: cost,
   });
 
   newName.value = "";
@@ -101,12 +126,31 @@ const deleteIngredient = async (item) => {
 
   await inventoryStore.deleteIngredient(item.id);
 };
+const validateStockAmount = (item) => {
+  const amount = Number(item.amount);
+
+  if (item.amount === "" || item.amount === null || item.amount === undefined) {
+    alert("請輸入庫存異動數量");
+    return false;
+  }
+
+  if (!Number.isFinite(amount) || amount <= 0) {
+    alert("庫存異動數量必須是大於 0 的有效數字");
+    return false;
+  }
+
+  return true;
+};
 
 const addStock = async (item) => {
+  if (!validateStockAmount(item)) return;
+
   await inventoryStore.addStock(item);
 };
 
 const removeStock = async (item) => {
+  if (!validateStockAmount(item)) return;
+
   await inventoryStore.removeStock(item);
 };
 
@@ -589,7 +633,7 @@ onMounted(async () => {
                     v-model="item.amount"
                     class="form-input quantity-input"
                     type="number"
-                    min="0"
+                    min="0.01"
                     placeholder="數量"
                   />
 

@@ -51,14 +51,27 @@ const serveQuantity = ref(1);
 ======================================== */
 
 const createMeal = async () => {
-  if (!newMealName.value.trim()) {
+  const name = newMealName.value.trim();
+
+  if (!name) {
     alert("請輸入餐點名稱");
     return;
   }
 
-  await mealStore.createMeal(newMealName.value.trim());
+  const exists = meals.value.some(
+    (meal) => meal.name.trim().toLowerCase() === name.toLowerCase(),
+  );
 
-  newMealName.value = "";
+  if (exists) {
+    alert(`餐點「${name}」已存在，請勿重複新增`);
+    return;
+  }
+
+  const success = await mealStore.createMeal(name);
+
+  if (success) {
+    newMealName.value = "";
+  }
 };
 
 /* ========================================
@@ -165,11 +178,10 @@ const serveMeal = async () => {
   }
 
   if (
-    !serveQuantity.value ||
-    isNaN(serveQuantity.value) ||
-    serveQuantity.value <= 0
+    !Number.isInteger(Number(serveQuantity.value)) ||
+    Number(serveQuantity.value) <= 0
   ) {
-    alert("請輸入大於 0 的份數");
+    alert("出餐份數必須是大於 0 的整數");
     return;
   }
 
@@ -255,6 +267,7 @@ onMounted(async () => {
               class="form-input"
               type="number"
               min="1"
+              step="1"
             />
           </div>
 

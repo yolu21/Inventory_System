@@ -27,8 +27,7 @@ const login = async () => {
     });
 
     localStorage.setItem("token", response.data.token);
-
-    router.push("/dashboard");
+    window.location.href = "/dashboard"; //為了重整頁面更新角色權限
   } catch (error) {
     console.error("登入失敗:", error);
 

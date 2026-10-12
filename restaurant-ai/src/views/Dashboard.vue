@@ -1,6 +1,5 @@
 <script setup>
-import { onMounted, computed } from "vue";
-
+import { onMounted, computed, ref } from "vue";
 import { useDashboardStore } from "../stores/dashboard";
 
 import {
@@ -26,9 +25,74 @@ ChartJS.register(
   LinearScale,
 );
 
+/* ========================================
+   Dashboard
+======================================== */
+
 onMounted(async () => {
   await dashboardStore.loadDashboard();
 });
+
+/* ========================================
+   Month Navigation
+======================================== */
+
+const selectedYear = computed({
+  get: () => dashboardStore.selectedYear,
+  set: (value) => {
+    dashboardStore.changeMonth(Number(value), dashboardStore.selectedMonth);
+  },
+});
+
+const selectedMonth = computed({
+  get: () => dashboardStore.selectedMonth,
+  set: (value) => {
+    dashboardStore.changeMonth(dashboardStore.selectedYear, Number(value));
+  },
+});
+
+const previousMonth = async () => {
+  await dashboardStore.previousMonth();
+};
+
+const nextMonth = async () => {
+  await dashboardStore.nextMonth();
+};
+
+/* ========================================
+   Month Display
+======================================== */
+
+const currentMonthLabel = computed(() => {
+  return `${dashboardStore.selectedYear} 年 ${dashboardStore.selectedMonth} 月`;
+});
+
+/* ========================================
+   Pagination
+======================================== */
+
+const currentPage = ref(1);
+const pageSize = 20;
+
+const inventoryItems = computed(() => {
+  return dashboardStore.overview?.ingredients ?? [];
+});
+
+const totalPages = computed(() => {
+  return Math.max(1, Math.ceil(inventoryItems.value.length / pageSize));
+});
+
+const paginatedInventoryItems = computed(() => {
+  const start = (currentPage.value - 1) * pageSize;
+
+  return inventoryItems.value.slice(start, start + pageSize);
+});
+
+const goToPage = (page) => {
+  if (page < 1 || page > totalPages.value) return;
+
+  currentPage.value = page;
+};
 
 /* ========================================
    Stock Color
@@ -40,12 +104,12 @@ const STOCK_COLORS = {
   NORMAL: "#16a34a",
 };
 
-const getStockColor = (stock) => {
-  if (stock < 10) {
+const getStockColor = (stock, minimumStock) => {
+  if (stock < minimumStock) {
     return STOCK_COLORS.LOW;
   }
 
-  if (stock < 30) {
+  if (stock < minimumStock * 1.5) {
     return STOCK_COLORS.WARNING;
   }
 
@@ -57,7 +121,7 @@ const getStockColor = (stock) => {
 ======================================== */
 
 /**
- * 所有食材庫存量
+ * 所有食材目前庫存量
  */
 const stockChartData = computed(() => {
   const ingredients = dashboardStore.overview?.ingredients ?? [];
@@ -68,10 +132,11 @@ const stockChartData = computed(() => {
     datasets: [
       {
         label: "目前庫存",
-
         data: ingredients.map((item) => item.stock),
 
-        backgroundColor: ingredients.map((item) => getStockColor(item.stock)),
+        backgroundColor: ingredients.map((item) =>
+          getStockColor(item.stock, item.minimumStock),
+        ),
 
         borderRadius: 6,
         borderSkipped: false,
@@ -98,7 +163,9 @@ const lowStockChartData = computed(() => {
 
         data: ingredients.map((item) => item.stock),
 
-        backgroundColor: ingredients.map((item) => getStockColor(item.stock)),
+        backgroundColor: ingredients.map((item) =>
+          getStockColor(item.stock, item.minimumStock),
+        ),
 
         borderRadius: 6,
         borderSkipped: false,
@@ -108,7 +175,7 @@ const lowStockChartData = computed(() => {
 });
 
 /**
- * 進貨 / 出貨量
+ * 選擇月份的進貨 / 出貨量
  */
 const stockFlowChartData = computed(() => {
   const ingredients = dashboardStore.overview?.ingredients ?? [];
@@ -148,7 +215,6 @@ const stockFlowChartData = computed(() => {
 
 const baseChartOptions = {
   responsive: true,
-
   maintainAspectRatio: false,
 
   plugins: {
@@ -204,18 +270,20 @@ const lowStockChartOptions = {
   },
 };
 
-const stockFlowChartOptions = {
-  ...baseChartOptions,
+const stockFlowChartOptions = computed(() => ({
+  responsive: true,
+  maintainAspectRatio: false,
 
   plugins: {
-    ...baseChartOptions.plugins,
-
+    legend: {
+      position: "top",
+    },
     title: {
       display: true,
-      text: "食材進出貨量",
+      text: `${currentMonthLabel.value}進出貨量`,
     },
   },
-};
+}));
 
 /* ========================================
    Computed Data
@@ -228,6 +296,25 @@ const lowStockItems = computed(() => {
 const topUsageItems = computed(() => {
   return dashboardStore.overview?.topUsage ?? [];
 });
+
+/* ========================================
+   Pagination Watch
+======================================== */
+
+const inventoryPageInfo = computed(() => {
+  if (inventoryItems.value.length === 0) {
+    return "0 筆";
+  }
+
+  const start = (currentPage.value - 1) * pageSize + 1;
+
+  const end = Math.min(
+    currentPage.value * pageSize,
+    inventoryItems.value.length,
+  );
+
+  return `${start}-${end} / 共 ${inventoryItems.value.length} 筆`;
+});
 </script>
 
 <template>
@@ -236,7 +323,7 @@ const topUsageItems = computed(() => {
          Page Header
     ===================================== -->
 
-    <header class="page-header">
+    <header class="page-header dashboard-header">
       <div>
         <h1 class="page-title">Dashboard</h1>
 
@@ -244,7 +331,65 @@ const topUsageItems = computed(() => {
           Restaurant inventory overview and stock status.
         </p>
       </div>
+
+      <!-- Month Selector -->
+
+      <div class="dashboard-period">
+        <button
+          class="btn btn-secondary"
+          type="button"
+          :disabled="dashboardStore.loading"
+          @click="previousMonth"
+        >
+          ←
+        </button>
+
+        <select v-model="selectedYear" class="form-select period-select">
+          <option
+            v-for="year in [
+              dashboardStore.selectedYear - 2,
+              dashboardStore.selectedYear - 1,
+              dashboardStore.selectedYear,
+              dashboardStore.selectedYear + 1,
+              dashboardStore.selectedYear + 2,
+            ]"
+            :key="year"
+            :value="year"
+          >
+            {{ year }} 年
+          </option>
+        </select>
+
+        <select v-model="selectedMonth" class="form-select period-select">
+          <option v-for="month in 12" :key="month" :value="month">
+            {{ month }} 月
+          </option>
+        </select>
+
+        <button
+          class="btn btn-secondary"
+          type="button"
+          :disabled="dashboardStore.loading"
+          @click="nextMonth"
+        >
+          →
+        </button>
+      </div>
     </header>
+
+    <!-- ====================================
+         Selected Month
+    ===================================== -->
+
+    <div class="dashboard-period-label">
+      <span class="badge badge-info">
+        {{ currentMonthLabel }}
+      </span>
+
+      <span class="period-hint">
+        進貨量、出貨量與使用量排行依選擇月份統計
+      </span>
+    </div>
 
     <!-- ====================================
          Summary Cards
@@ -252,43 +397,47 @@ const topUsageItems = computed(() => {
 
     <section class="stat-grid dashboard-stats">
       <!-- Total Ingredients -->
+
       <div class="stat-card">
         <div class="stat-label">食材總數</div>
 
         <div class="stat-value">
-          {{ dashboardStore.summary.totalIngredients }}
+          {{ dashboardStore.summary.totalIngredients ?? 0 }}
         </div>
       </div>
 
-      <!-- Total IN -->
+      <!-- Monthly IN -->
+
       <div class="stat-card">
-        <div class="stat-label">總進貨量</div>
+        <div class="stat-label">本月進貨量</div>
 
         <div class="stat-value">
-          {{ dashboardStore.summary.totalIn }}
+          {{ dashboardStore.summary.monthlyIn ?? 0 }}
         </div>
       </div>
 
-      <!-- Total OUT -->
+      <!-- Monthly OUT -->
+
       <div class="stat-card">
-        <div class="stat-label">總出貨量</div>
+        <div class="stat-label">本月出貨量</div>
 
         <div class="stat-value">
-          {{ dashboardStore.summary.totalOut }}
+          {{ dashboardStore.summary.monthlyOut ?? 0 }}
         </div>
       </div>
 
       <!-- Low Stock -->
+
       <div
         class="stat-card"
         :class="{
-          'stat-card-warning': dashboardStore.summary.lowStockIngredients > 0,
+          'stat-card-warning': dashboardStore.summary.lowStockCount > 0,
         }"
       >
         <div class="stat-label">低庫存食材</div>
 
         <div class="stat-value">
-          {{ dashboardStore.summary.lowStockIngredients }}
+          {{ dashboardStore.summary.lowStockCount ?? 0 }}
         </div>
       </div>
     </section>
@@ -299,6 +448,7 @@ const topUsageItems = computed(() => {
 
     <section class="dashboard-grid">
       <!-- Stock Overview -->
+
       <div class="card dashboard-card">
         <div class="card-header">
           <div>
@@ -323,6 +473,7 @@ const topUsageItems = computed(() => {
       </div>
 
       <!-- Low Stock -->
+
       <div class="card dashboard-card">
         <div class="card-header">
           <div>
@@ -400,7 +551,7 @@ const topUsageItems = computed(() => {
     <section class="card dashboard-card">
       <div class="card-header">
         <div>
-          <h2 class="card-title">庫存進出量</h2>
+          <h2 class="card-title">{{ currentMonthLabel }}進出貨量</h2>
 
           <p class="card-description">
             Comparison between stock-in and stock-out quantities.
@@ -422,7 +573,7 @@ const topUsageItems = computed(() => {
     <section class="card dashboard-card">
       <div class="card-header">
         <div>
-          <h2 class="card-title">使用量最高食材</h2>
+          <h2 class="card-title">{{ currentMonthLabel }}使用量最高食材</h2>
 
           <p class="card-description">
             Ingredients with the highest stock-out quantity.
@@ -478,7 +629,13 @@ const topUsageItems = computed(() => {
         <div>
           <h2 class="card-title">庫存明細</h2>
 
-          <p class="card-description">Detailed stock movement by ingredient.</p>
+          <p class="card-description">
+            {{ currentMonthLabel }}進出貨量與目前庫存。
+          </p>
+        </div>
+
+        <div class="table-info">
+          {{ inventoryPageInfo }}
         </div>
       </div>
 
@@ -487,18 +644,15 @@ const topUsageItems = computed(() => {
           <thead>
             <tr>
               <th>食材名稱</th>
-              <th>進貨量</th>
-              <th>出貨量</th>
+              <th>{{ dashboardStore.selectedMonth }}月進貨量</th>
+              <th>{{ dashboardStore.selectedMonth }}月出貨量</th>
               <th>目前庫存</th>
               <th>狀態</th>
             </tr>
           </thead>
 
           <tbody>
-            <tr
-              v-for="item in dashboardStore.overview.ingredients || []"
-              :key="item.id"
-            >
+            <tr v-for="item in paginatedInventoryItems" :key="item.id">
               <td>
                 <strong>
                   {{ item.name }}
@@ -526,7 +680,7 @@ const topUsageItems = computed(() => {
                 </span>
 
                 <span
-                  v-else-if="item.stock < item.maximumStock + 5"
+                  v-else-if="item.stock < item.minimumStock * 1.5"
                   class="badge badge-warning"
                 >
                   注意
@@ -539,6 +693,43 @@ const topUsageItems = computed(() => {
         </table>
 
         <div v-else class="empty-state">暫無庫存資料</div>
+      </div>
+
+      <!-- Pagination -->
+
+      <div v-if="totalPages > 1" class="pagination">
+        <button
+          class="btn btn-secondary"
+          type="button"
+          :disabled="currentPage === 1"
+          @click="goToPage(currentPage - 1)"
+        >
+          上一頁
+        </button>
+
+        <div class="pagination-pages">
+          <button
+            v-for="page in totalPages"
+            :key="page"
+            class="pagination-page"
+            :class="{
+              active: currentPage === page,
+            }"
+            type="button"
+            @click="goToPage(page)"
+          >
+            {{ page }}
+          </button>
+        </div>
+
+        <button
+          class="btn btn-secondary"
+          type="button"
+          :disabled="currentPage === totalPages"
+          @click="goToPage(currentPage + 1)"
+        >
+          下一頁
+        </button>
       </div>
     </section>
   </div>
@@ -558,6 +749,40 @@ const topUsageItems = computed(() => {
 }
 
 /* ========================================
+   Dashboard Header
+======================================== */
+
+.dashboard-header {
+  align-items: flex-start;
+}
+
+.dashboard-period {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+}
+
+.period-select {
+  min-width: 110px;
+}
+
+/* ========================================
+   Period Label
+======================================== */
+
+.dashboard-period-label {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+  margin-bottom: var(--spacing-5);
+}
+
+.period-hint {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+/* ========================================
    Stat Card
 ======================================== */
 
@@ -572,13 +797,11 @@ const topUsageItems = computed(() => {
 
 .dashboard-grid {
   display: grid;
-
   grid-template-columns:
     minmax(0, 2fr)
     minmax(320px, 1fr);
 
   gap: var(--spacing-5);
-
   margin-bottom: var(--spacing-5);
 }
 
@@ -592,9 +815,7 @@ const topUsageItems = computed(() => {
 
 .card-description {
   margin: 4px 0 0;
-
   color: var(--color-text-secondary);
-
   font-size: var(--font-size-sm);
 }
 
@@ -604,7 +825,6 @@ const topUsageItems = computed(() => {
 
 .chart-container {
   position: relative;
-
   width: 100%;
 }
 
@@ -629,11 +849,8 @@ const topUsageItems = computed(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-
   gap: var(--spacing-3);
-
   padding: var(--spacing-4) 0;
-
   border-bottom: 1px solid var(--color-border-light);
 }
 
@@ -648,9 +865,7 @@ const topUsageItems = computed(() => {
 
 .low-stock-stock {
   margin-top: 3px;
-
   color: var(--color-text-secondary);
-
   font-size: var(--font-size-xs);
 }
 
@@ -662,18 +877,12 @@ const topUsageItems = computed(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-
   width: 40px;
   height: 40px;
-
   margin-bottom: var(--spacing-3);
-
   border-radius: var(--radius-full);
-
   color: var(--color-success);
-
   background: var(--color-success-light);
-
   font-weight: var(--font-weight-bold);
 }
 
@@ -689,11 +898,8 @@ const topUsageItems = computed(() => {
 .usage-item {
   display: flex;
   align-items: center;
-
   gap: var(--spacing-4);
-
   padding: var(--spacing-4) 0;
-
   border-bottom: 1px solid var(--color-border-light);
 }
 
@@ -705,18 +911,12 @@ const topUsageItems = computed(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-
   width: 32px;
   height: 32px;
-
   flex-shrink: 0;
-
   border-radius: var(--radius-full);
-
   color: var(--color-primary);
-
   background: var(--color-primary-light);
-
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-bold);
 }
@@ -728,7 +928,6 @@ const topUsageItems = computed(() => {
 
 .usage-name {
   margin-bottom: var(--spacing-2);
-
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-semibold);
 }
@@ -736,29 +935,76 @@ const topUsageItems = computed(() => {
 .usage-bar {
   width: 100%;
   height: 6px;
-
   overflow: hidden;
-
   border-radius: var(--radius-full);
-
   background: var(--color-border-light);
 }
 
 .usage-bar-fill {
   height: 100%;
-
   border-radius: inherit;
-
   background: var(--color-primary);
 }
 
 .usage-value {
   min-width: 48px;
-
   text-align: right;
-
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-semibold);
+}
+
+/* ========================================
+   Table Info
+======================================== */
+
+.table-info {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+/* ========================================
+   Pagination
+======================================== */
+
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-3);
+  padding: var(--spacing-4);
+  border-top: 1px solid var(--color-border-light);
+}
+
+.pagination-pages {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.pagination-page {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 34px;
+  height: 34px;
+  padding: 0 8px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text-secondary);
+  background: var(--color-surface);
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+
+.pagination-page:hover {
+  color: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+.pagination-page.active {
+  color: #fff;
+  border-color: var(--color-primary);
+  background: var(--color-primary);
 }
 
 /* ========================================
@@ -769,15 +1015,43 @@ const topUsageItems = computed(() => {
   .dashboard-grid {
     grid-template-columns: 1fr;
   }
+
+  .dashboard-header {
+    flex-direction: column;
+  }
 }
 
 @media (max-width: 768px) {
+  .dashboard-period {
+    width: 100%;
+  }
+
+  .period-select {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .dashboard-period-label {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
   .chart-container-large {
     height: 300px;
   }
 
   .chart-container-medium {
     height: 250px;
+  }
+
+  .pagination {
+    flex-wrap: wrap;
+  }
+
+  .pagination-pages {
+    order: -1;
+    width: 100%;
+    justify-content: center;
   }
 }
 </style>

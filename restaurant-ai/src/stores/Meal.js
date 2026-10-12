@@ -41,7 +41,7 @@ export const useMealStore = defineStore("meal", () => {
   const createMeal = async (name) => {
     if (!name.trim()) {
       alert("請輸入餐點名稱");
-      return;
+      return false;
     }
 
     try {
@@ -51,15 +51,17 @@ export const useMealStore = defineStore("meal", () => {
         name: name.trim(),
       });
 
-      alert(`餐點 "${response.data.name}" 新增成功`);
-
+      alert(`餐點「${response.data.name}」新增成功`);
       await loadMeals();
+
+      return true;
     } catch (error) {
       console.error("Failed to create meal:", error);
-
       alert(
-        `新增餐點失敗:\n ${error.response?.data?.message || error.message}`,
+        `新增餐點失敗：\n${error.response?.data?.message || error.message}`,
       );
+
+      return false;
     } finally {
       loading.value = false;
     }

@@ -75,7 +75,7 @@ namespace InventorySys.Migrations
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("nvarchar(450)");
 
                     b.Property<string>("Unit")
                         .IsRequired()
@@ -86,6 +86,9 @@ namespace InventorySys.Migrations
                         .HasColumnType("decimal(18,2)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
 
                     b.ToTable("Ingredients");
                 });
@@ -100,9 +103,12 @@ namespace InventorySys.Migrations
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("nvarchar(450)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
 
                     b.ToTable("Meals");
                 });
@@ -157,6 +163,8 @@ namespace InventorySys.Migrations
 
                     b.HasKey("id");
 
+                    b.HasIndex("IngredientId");
+
                     b.ToTable("StockRecords");
                 });
 
@@ -198,6 +206,17 @@ namespace InventorySys.Migrations
                         .HasForeignKey("MealId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("InventorySys.Models.StockRecord", b =>
+                {
+                    b.HasOne("InventorySys.Models.Ingredients", "Ingredients")
+                        .WithMany()
+                        .HasForeignKey("IngredientId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.Navigation("Ingredients");
                 });
 #pragma warning restore 612, 618
         }

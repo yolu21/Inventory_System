@@ -20,6 +20,8 @@ namespace InventorySys.Controllers
         }
         //build Meal
         [HttpPost]
+        // 新增餐點
+        [HttpPost]
         public async Task<IActionResult> CreateMeal(MealDto data)
         {
             if (string.IsNullOrWhiteSpace(data.Name))
@@ -30,10 +32,25 @@ namespace InventorySys.Controllers
                 });
             }
 
+            var mealName = data.Name.Trim();
+
+            // 檢查餐點名稱是否重複（忽略大小寫）
+            var exists = await _context.Meals
+                .AnyAsync(x => x.Name.ToLower() == mealName.ToLower());
+
+            if (exists)
+            {
+                return Conflict(new
+                {
+                    message = $"餐點「{mealName}」已存在，請勿重複新增"
+                });
+            }
+
             var meal = new Meal
             {
-                Name = data.Name.Trim(),
+                Name = mealName
             };
+
             _context.Meals.Add(meal);
             await _context.SaveChangesAsync();
 
@@ -41,7 +58,7 @@ namespace InventorySys.Controllers
             {
                 message = "餐點建立成功",
                 id = meal.Id,
-                name = meal.Name,
+                name = meal.Name
             });
         }
         //Build Meal BOM
@@ -82,7 +99,7 @@ namespace InventorySys.Controllers
             {
                 return BadRequest(new
                 {
-                    message = "此時才已經存在於此餐點 Bom。"
+                    message = "此食材已經存在於此餐點 Bom。"
                 });
             }
             var mealIngredient = new MealIngredient
@@ -245,11 +262,11 @@ namespace InventorySys.Controllers
         public async Task<IActionResult> ServeMeal(int mealId, ServeMealDto data)
         {
             //檢查出餐份數
-            if (data.Quantity <= 0)
+            if (data.Quantity <= 0 || data.Quantity != decimal.Truncate(data.Quantity))
             {
                 return BadRequest(new
                 {
-                    message = "出餐份數必須大於 0 "
+                    message = "出餐份數必須是大於 0 的整數"
                 });
             }
 

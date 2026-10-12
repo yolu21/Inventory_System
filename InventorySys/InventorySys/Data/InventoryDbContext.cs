@@ -18,11 +18,25 @@ namespace InventorySys.Data
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
+
+            // MealIngredient → Meal
             modelBuilder.Entity<MealIngredient>()
-                .HasOne<Meal>().WithMany().HasForeignKey(x => x.MealId);
-            
+                .HasOne<Meal>()
+                .WithMany()
+                .HasForeignKey(x => x.MealId);
+
+            // MealIngredient → Ingredients
             modelBuilder.Entity<MealIngredient>()
-                .HasOne<Ingredients>().WithMany().HasForeignKey(x => x.IngredientId);
+                .HasOne<Ingredients>()
+                .WithMany()
+                .HasForeignKey(x => x.IngredientId);
+
+            // StockRecord → Ingredients
+            modelBuilder.Entity<StockRecord>()
+                .HasOne<Ingredients>()
+                .WithMany()
+                .HasForeignKey(x => x.IngredientId);
+
             // 食材單位成本
             modelBuilder.Entity<Ingredients>()
                 .Property(x => x.UnitCost)
@@ -37,6 +51,21 @@ namespace InventorySys.Data
             modelBuilder.Entity<StockRecord>()
                 .Property(x => x.Quantity)
                 .HasPrecision(18, 2);
+            // 食材名稱不可重複
+            modelBuilder.Entity<Ingredients>()
+                .HasIndex(x => x.Name)
+                .IsUnique();
+
+            // 庫存紀錄關聯食材，刪除時不自動連鎖刪除
+            modelBuilder.Entity<StockRecord>()
+                .HasOne(x => x.Ingredients)
+                .WithMany()
+                .HasForeignKey(x => x.IngredientId)
+                .OnDelete(DeleteBehavior.NoAction);
+            // 餐點名稱不可重複
+            modelBuilder.Entity<Meal>()
+                .HasIndex(x => x.Name)
+                .IsUnique();
         }
     }
 
