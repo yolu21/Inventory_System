@@ -18,18 +18,18 @@
 
 | Dashboard                                                           |
 | ------------------------------------------------------------------- |
-| <img src="./screenshots/Dashboard.png" width="600" alt="Dashboard"> |
+| <img src="./screenshots/Dashboard.png" width="800" alt="Dashboard"> |
 | 庫存管理                                                            |
 | -----------------------------------------                           |
-| <img src="./screenshots/Inventory.png" width="600" alt="Inventory"> |
+| <img src="./screenshots/Inventory.png" width="800" alt="Inventory"> |
 
 | 庫存紀錄                                                        |
 | --------------------------------------------------------------- |
-| <img src="./screenshots/History.png" width="600" alt="History"> |
+| <img src="./screenshots/History.png" width="800" alt="History"> |
 
 | AIChat 功能                                                   |
 | ------------------------------------------------------------- |
-| <img src="./screenshots/AIChat.png" width="600" alt="AIChat"> |
+| <img src="./screenshots/AIChat.png" width="800" alt="AIChat"> |
 
 ## 功能介紹
 
